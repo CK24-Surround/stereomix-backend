@@ -11,10 +11,10 @@ RUN apt-get update \
     clang zlib1g-dev
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["StereoMixLobby/StereoMixLobby.csproj", "StereoMixLobby/"]
+COPY ["src/StereoMixLobby/StereoMixLobby.csproj", "src/StereoMixLobby/"]
 RUN dotnet restore "./src/StereoMixLobby/StereoMixLobby.csproj"
 COPY . .
-WORKDIR "/src/StereoMixLobby"
+WORKDIR "/src/src/StereoMixLobby"
 RUN dotnet build "./StereoMixLobby.csproj" -c %BUILD_CONFIGURATION% -o /app/build
 
 FROM build AS publish
