@@ -15,7 +15,7 @@ COPY ["src/StereoMixLobby/StereoMixLobby.csproj", "src/StereoMixLobby/"]
 RUN dotnet restore "./src/StereoMixLobby/StereoMixLobby.csproj"
 COPY . .
 WORKDIR "/src/src/StereoMixLobby"
-RUN dotnet build "./StereoMixLobby.csproj" -c %BUILD_CONFIGURATION% -o /app/build
+RUN dotnet build "./StereoMixLobby.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
