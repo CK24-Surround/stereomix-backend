@@ -1,5 +1,5 @@
 ﻿### Default gRPC Test
-GRPC localhost:5273/greet.Greeter/SayHello
+GRPC localhost:5001/greet.Greeter/SayHello
 
 {
   "name": "StereoMixTestClient"

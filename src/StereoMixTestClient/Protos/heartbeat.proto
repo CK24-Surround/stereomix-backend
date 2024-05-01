@@ -1,0 +1,16 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "StereoMixLobby";
+
+service Heartbeat {
+  rpc Monitor(stream Beat) returns (stream MonitorResponse);
+}
+
+message Beat {
+  string id = 1;
+  string timestamp = 2;
+}
+
+message MonitorResponse {
+  bool ok = 1;
+}

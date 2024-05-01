@@ -8,20 +8,19 @@
     <PublishAot>true</PublishAot>
     <UserSecretsId>4392092c-5fd3-4adc-b76f-0515888d8a66</UserSecretsId>
     <DockerDefaultTargetOS>Windows</DockerDefaultTargetOS>
-    <DockerfileContext>..\..</DockerfileContext>
+    <DockerfileContext>../..</DockerfileContext>
   </PropertyGroup>
 
   <ItemGroup>
-    <Protobuf Include="Protos\greet.proto" GrpcServices="Server"/>
+    <Protobuf Include="Protos/greet.proto" GrpcServices="Server"/>
+    <Protobuf Include="Protos/room.proto" GrpcServices="Server"/>
+    <Protobuf Include="Protos/heartbeat.proto" GrpcServices="Server"/>
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.62.0"/>
+    <PackageReference Include="Grpc.AspNetCore.HealthChecks" Version="2.62.0"/>
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.20.1"/>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="Properties\PublishProfiles\FolderProfile.pubxml" />
   </ItemGroup>
 
 </Project>

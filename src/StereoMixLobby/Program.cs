@@ -1,9 +1,14 @@
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using StereoMixLobby.Services;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using StereoMixLobby.GrpcServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddAuthentication();
+builder.Services.AddAuthorization();
+
 builder.Services.AddGrpc();
+
 builder.WebHost.ConfigureKestrel((_, options) =>
 {
     options.ListenAnyIP(5001, listenOptions =>
@@ -15,7 +20,12 @@ builder.WebHost.ConfigureKestrel((_, options) =>
 
 var app = builder.Build();
 
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapGet("/", () => "StereoMix Lobby Service");
 app.MapGrpcService<GreeterService>();
+app.MapGrpcService<HeartbeatService>();
 
 app.Run();
