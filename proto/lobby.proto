@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package lobby;
+
+import "room.proto";
+
+option csharp_namespace = "StereoMix.Lobby";
+option cc_enable_arenas = true;
+
+service LobbyService {
+  rpc CreateRoom(CreateRoomRequest) returns (CreateRoomResponse);
+  rpc JoinRoom(JoinRoomRequest) returns (JoinRoomResponse);
+  rpc GetRoomList(GetRoomListRequest) returns (GetRoomListResponse);
+}
+
+message LobbyRoomInfo {
+  string room_id = 1;
+  room.RoomConfig config = 2;
+  int32 current_players = 3;
+}
+
+// CreateRoom
+message CreateRoomRequest {
+  room.RoomConfig config = 1;
+  string password = 2;
+}
+
+message CreateRoomResponse {
+  room.Connection connection = 1;
+}
+
+// JoinRoom
+message JoinRoomRequest {
+  string room_id = 1;
+  string password = 2;
+}
+
+message JoinRoomResponse {
+  room.Connection connection = 1;
+}
+
+// GetRoomList
+message GetRoomListRequest {
+  room.RoomVisibility visibility = 1;
+  room.GameMode mode = 3;
+  room.GameMap map = 4;
+}
+
+message GetRoomListResponse {
+  repeated LobbyRoomInfo rooms = 1;
+}

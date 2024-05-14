@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "StereoMixTestClient": {
+      "commandName": "Project",
+      "commandLineArgs": "localhost:8080"
+    }
+  }
+}

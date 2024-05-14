@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <!--<PublishAot>true</PublishAot>-->
+    <UserSecretsId>4392092c-5fd3-4adc-b76f-0515888d8a66</UserSecretsId>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <DockerfileContext>..\..</DockerfileContext>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProtoBuf Include="..\..\proto\*.proto" GrpcServices="Server"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Cloud.Firestore" Version="3.7.0"/>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.62.0"/>
+    <PackageReference Include="Grpc.AspNetCore.HealthChecks" Version="2.62.0"/>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Certificate" Version="8.0.4"/>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.4"/>
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0"/>
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="8.0.0"/>
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.20.1"/>
+    <PackageReference Include="RestSharp" Version="110.2.0"/>
+  </ItemGroup>
+
+</Project>

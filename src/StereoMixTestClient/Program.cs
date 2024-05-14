@@ -1,10 +1,7 @@
-﻿using System.Diagnostics;
+using StereoMix.Auth;
 using Grpc.Core;
 using Grpc.Net.Client;
-using Microsoft.Extensions.Logging;
-using StereoMixLobby;
-
-Console.WriteLine("Hello, World!");
+using StereoMix.Greet;
 
 if (args.Length < 1)
 {
@@ -12,66 +9,30 @@ if (args.Length < 1)
     return;
 }
 
-var handler = new HttpClientHandler();
-handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+var endPoint = "dns:///" + args[0];
 
-var channel = GrpcChannel.ForAddress(args[0], new GrpcChannelOptions { HttpHandler = handler });
-var greeter = new Greeter.GreeterClient(channel);
+Console.WriteLine("Connecting to " + endPoint + "...");
 
-var reply = await greeter.SayHelloAsync(new HelloRequest { Name = "StereoMixTestClient" });
+var credentials = endPoint.Contains("localhost") ? ChannelCredentials.Insecure : ChannelCredentials.SecureSsl;
 
-Console.WriteLine(reply.Message);
+var channel = GrpcChannel.ForAddress(endPoint, new GrpcChannelOptions { Credentials = credentials });
+await channel.ConnectAsync().ConfigureAwait(false);
+Console.WriteLine("Connected.");
 
-await HeartbeatAsync(channel).ConfigureAwait(false);
-return;
+var authService = new AuthService.AuthServiceClient(channel);
+Console.WriteLine("Requesting token...");
+var loginResponse = await authService.GuestLoginAsync(new GuestLoginRequest { UserName = "StereoMixTestClient" });
+Console.WriteLine("Token: " + loginResponse.Token);
 
-static async Task HeartbeatAsync(GrpcChannel channel)
+var headers = new Metadata { { "authorization", "Bearer " + loginResponse.Token } };
+
+var greeter = new GreeterService.GreeterServiceClient(channel);
+try
 {
-    var heartbeatClient = new Heartbeat.HeartbeatClient(channel);
-    using var heartbeatStream = heartbeatClient.Monitor();
-
-    var cts = new CancellationTokenSource();
-
-    Console.WriteLine("Starting background task to receive messages.");
-    var readTask = Task.Run(async () =>
-    {
-        try
-        {
-            await foreach (var response in heartbeatStream.ResponseStream.ReadAllAsync())
-            {
-                Console.WriteLine(response.Ok);
-            }
-        }
-        catch (RpcException e)
-        {
-            Console.WriteLine($"Rpc error: {e.Status.StatusCode}");
-        }
-        catch (TaskCanceledException)
-        {
-        }
-    });
-
-    var writeTask = Task.Run(async () =>
-    {
-        while (!cts.Token.IsCancellationRequested)
-        {
-            await heartbeatStream.RequestStream.WriteAsync(new Beat
-            {
-                Id = "StereoMixTestClient", Timestamp = DateTime.Now.ToString("O")
-            }).ConfigureAwait(false);
-            if (cts.IsCancellationRequested)
-            {
-                return;
-            }
-
-            await Task.Delay(1000).ConfigureAwait(false);
-        }
-    });
-
-    Console.ReadKey();
-    cts.Cancel();
-
-    await heartbeatStream.RequestStream.CompleteAsync().ConfigureAwait(false);
-    await Task.WhenAll(readTask, writeTask).ConfigureAwait(false);
-    Console.WriteLine("Task done.");
+    var reply = await greeter.SayHelloAsync(new HelloRequest { Name = "StereoMixTestClient" }, headers);
+    Console.WriteLine(reply.Message);
+}
+catch (RpcException e) when (e.StatusCode == StatusCode.Unauthenticated)
+{
+    Console.WriteLine("Unauthenticated.");
 }

@@ -1,0 +1,42 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34728.123
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StereoMixTestClient", "src\StereoMixTestClient\StereoMixTestClient.csproj", "{5D11F601-3DF0-4388-8322-6AFA746A9276}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StereoMix", "src\StereoMix\StereoMix.csproj", "{1373FFEA-E48F-4A79-8243-80E55113102E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "솔루션 항목", "솔루션 항목", "{AFDE138F-1792-41CF-8259-0EFEFEDF2CBA}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		.gitignore = .gitignore
+		Dockerfile = Dockerfile
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5D11F601-3DF0-4388-8322-6AFA746A9276}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D11F601-3DF0-4388-8322-6AFA746A9276}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D11F601-3DF0-4388-8322-6AFA746A9276}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D11F601-3DF0-4388-8322-6AFA746A9276}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1373FFEA-E48F-4A79-8243-80E55113102E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1373FFEA-E48F-4A79-8243-80E55113102E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1373FFEA-E48F-4A79-8243-80E55113102E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1373FFEA-E48F-4A79-8243-80E55113102E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {74DBF570-C3F9-40C1-A9F9-4E25EF6A06C8}
+	EndGlobalSection
+EndGlobal

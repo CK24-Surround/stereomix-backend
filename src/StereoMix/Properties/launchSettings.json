@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "grpc": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "JWT_ISSUER": "TestStereoMixGrpcServer",
+        "JWT_AUDIENCE": "TestStereoMixGameClient",
+        "JWT_SECRET": "TEST98483c6eb40b6c31a448c22a66ded3b5e5e8d5119cac8327b655c8b5c4836489",
+        "FIRESTORE_PROJECT_ID": "",
+        "FIRESTORE_EMULATOR_HOST": "127.0.0.1:7070",
+        "HATHORA_APP_ID": "",
+        "HATHORA_API_TOKEN": "",
+        "EDGEGAP_API_KEY": ""
+      },
+      "dotnetRunMessages": true
+    }
+  }
+}

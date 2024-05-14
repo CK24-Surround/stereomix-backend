@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package game;
+
+option csharp_namespace = "StereoMix.Game";
+option cc_enable_arenas = true;
+
+enum GameMode {
+  GAMEMODE_UNSPECIFIED = 0;
+  GAMEMODE_DEFAULT = 1;
+}
+
+enum GameMap {
+  GAMEMAP_UNSPECIFIED = 0;
+  GAMEMAP_DEFAULT = 1;
+}
+
+enum Team {
+  TEAM_UNSPECIFIED = 0;
+  TEAM_A = 1;
+  TEAM_B = 2;
+}
+
+message GameServerInfo {
+  string server_address = 1;
+  int32 server_port = 2;
+}
