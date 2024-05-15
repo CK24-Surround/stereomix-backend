@@ -10,8 +10,8 @@ using StereoMix.Edgegap;
 using StereoMix.Firestore;
 using StereoMix.Grpc;
 using StereoMix.Hathora;
-using StereoMix.JWT;
 using StereoMix.Security;
+using AuthService = StereoMix.Grpc.AuthService;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
@@ -46,7 +46,7 @@ services
     })
     .AddJwtBearer(options =>
     {
-        var key = Environment.GetEnvironmentVariable(JwtTokenService.JwtSecretKeyName) ?? throw new InvalidOperationException("JWT_SECRET is not set");
+        var key = Environment.GetEnvironmentVariable(JwtTokenGenerator.JwtSecretKeyName) ?? throw new InvalidOperationException("JWT_SECRET is not set");
         var keyBytes = Encoding.ASCII.GetBytes(key);
         options.SaveToken = true;
         options.RequireHttpsMetadata = false;
@@ -74,9 +74,9 @@ services
 services.AddGrpc(options => { options.EnableDetailedErrors = true; });
 services.AddGrpcHealthChecks().AddCheck("StereoMix", () => HealthCheckResult.Healthy());
 
-services.AddSingleton<IJwtTokenService, JwtTokenService>();
-services.AddSingleton<IFirestoreService, FirestoreService>();
-services.AddSingleton<IRoomEncryptService, RoomEncryptService>();
+services.AddSingleton<IJwtTokenGenrerator, JwtTokenGenerator>();
+services.AddSingleton<IFirestore, Firestore>();
+services.AddSingleton<IRoomEncryptor, RoomEncryptor>();
 services.AddSingleton<IEdgegapService, EdgegapService>();
 services.AddSingleton<IHathoraCloudService, HathoraCloudService>();
 

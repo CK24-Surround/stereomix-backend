@@ -2,12 +2,12 @@ using Google.Cloud.Firestore;
 
 namespace StereoMix.Firestore;
 
-public interface IFirestoreService
+public interface IFirestore
 {
     ValueTask<FirestoreDb> GetDatabaseAsync();
 }
 
-public class FirestoreService(ILogger<FirestoreService> logger) : IFirestoreService
+public class Firestore : IFirestore
 {
     private FirestoreDb? _database;
 
@@ -19,8 +19,6 @@ public class FirestoreService(ILogger<FirestoreService> logger) : IFirestoreServ
         }
 
         var projectId = Environment.GetEnvironmentVariable("FIRESTORE_PROJECT_ID") ?? throw new InvalidOperationException("FIRESTORE_PROJECT_ID is not set");
-        // var credential = await GoogleCredential.GetApplicationDefaultAsync().ConfigureAwait(false);
-
         _database = await FirestoreDb.CreateAsync(projectId).ConfigureAwait(false);
         return _database;
     }

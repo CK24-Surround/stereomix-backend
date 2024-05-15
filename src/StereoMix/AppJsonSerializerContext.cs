@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using StereoMix.Edgegap.Model;
-using StereoMix.Hathora.Model;
+using StereoMix.Edgegap;
+using StereoMix.Hathora;
 
 namespace StereoMix;
 
@@ -16,20 +16,16 @@ namespace StereoMix;
         typeof(NullableDateTimeJsonConverter),
         typeof(NullableIntJsonConverter),
         typeof(NullableDoubleJsonConverter)
-        // typeof(JsonStringEnumConverter<HathoraRegion>),
-        // typeof(HathoraRoomReadyStatusConverter),
-        // typeof(HathoraRoomStatusConverter),
-        // typeof(HathoraTransportTypeConverter)
     ])]
 [JsonSerializable(typeof(CreateDeploymentRequest))]
 [JsonSerializable(typeof(CreateDeploymentResponse))]
 [JsonSerializable(typeof(DeploymentStatus))]
-[JsonSerializable(typeof(CreateRoomRequest))]
-[JsonSerializable(typeof(CreateRoomResponse))]
-[JsonSerializable(typeof(GetRoomInfoRequest))]
-[JsonSerializable(typeof(GetRoomInfoResponse))]
-[JsonSerializable(typeof(GetConnectionInfoRequest))]
-[JsonSerializable(typeof(GetConnectionInfoResponse))]
+[JsonSerializable(typeof(HathoraCreateRoomRequest))]
+[JsonSerializable(typeof(HathoraCreateRoomResponse))]
+[JsonSerializable(typeof(HathoraGetRoomInfoRequest))]
+[JsonSerializable(typeof(HathoraGetRoomInfoResponse))]
+[JsonSerializable(typeof(HathoraGetConnectionInfoRequest))]
+[JsonSerializable(typeof(HathoraGetConnectionInfoResponse))]
 public partial class AppJsonSerializerContext : JsonSerializerContext
 {
 }

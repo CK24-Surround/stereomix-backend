@@ -1,10 +1,7 @@
 using System.Net;
 using System.Text.Json;
-
 using RestSharp;
 using RestSharp.Serializers.Json;
-
-using StereoMix.Edgegap.Model;
 
 namespace StereoMix.Edgegap;
 
@@ -25,7 +22,11 @@ public class EdgegapService : IEdgegapService, IDisposable
         _logger = logger;
 
         var authenticator = new EdgegapAuthenticator(Environment.GetEnvironmentVariable("EDGEGAP_API_KEY") ?? throw new InvalidOperationException("EDGEGAP_API_KEY is not set"));
-        var options = new RestClientOptions(ApiUrl) { Authenticator = authenticator, ThrowOnAnyError = false };
+        var options = new RestClientOptions(ApiUrl)
+        {
+            Authenticator = authenticator,
+            ThrowOnAnyError = false
+        };
 
         _client = new RestClient(options, configureSerialization: s =>
         {

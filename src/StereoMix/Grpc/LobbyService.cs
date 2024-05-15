@@ -3,24 +3,19 @@ using Google.Cloud.Firestore;
 using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using StereoMix.Edgegap;
 using StereoMix.Firestore;
 using StereoMix.Hathora;
-using StereoMix.Hathora.Model;
 using StereoMix.Lobby;
-using StereoMix.Room;
 using StereoMix.Security;
-using CreateRoomRequest = StereoMix.Lobby.CreateRoomRequest;
-using CreateRoomResponse = StereoMix.Lobby.CreateRoomResponse;
 
 namespace StereoMix.Grpc;
 
 public class LobbyService(
     ILogger<LobbyService> logger,
-    IFirestoreService firestore,
-    IEdgegapService edgegap,
+    IFirestore firestore,
+    // IEdgegapService edgegap,
     IHathoraCloudService hathora,
-    IRoomEncryptService roomEncryptor) : Lobby.LobbyService.LobbyServiceBase
+    IRoomEncryptor roomEncryptor) : Lobby.LobbyService.LobbyServiceBase
 {
     [Authorize(Policy = "UserPolicy")]
     public override async Task<CreateRoomResponse> CreateRoom(CreateRoomRequest request, ServerCallContext context)
@@ -66,15 +61,24 @@ public class LobbyService(
 
         logger.LogDebug("New room id generated: {RoomId}", roomId);
 
-        Connection connection;
+        RoomConnectionInfo connection;
         try
         {
-            var createRoomRequest = new Hathora.Model.CreateRoomRequest { RoomId = roomId, RoomConfig = roomId, Region = HathoraRegion.Tokyo };
+            var createRoomRequest = new HathoraCreateRoomRequest
+            {
+                RoomId = roomId,
+                RoomConfig = roomId,
+                Region = HathoraRegion.Tokyo
+            };
             var createRoomResponse = await hathora.CreateRoomAsync(createRoomRequest, context.CancellationToken).ConfigureAwait(false);
 
             var host = createRoomResponse.ExposedPort?.Host ?? throw new InvalidOperationException("Host not found.");
             var port = createRoomResponse.ExposedPort.Port;
-            connection = new Connection { Host = host, Port = port };
+            connection = new RoomConnectionInfo
+            {
+                Host = host,
+                Port = port
+            };
             logger.LogInformation("New game server process created: {Host}:{Port}", host, port);
         }
         catch (HttpRequestException e)
@@ -98,7 +102,11 @@ public class LobbyService(
             },
             ["players"] = new List<Dictionary<string, object>>(),
             ["player_count"] = 0,
-            ["connection"] = new Dictionary<string, object> { ["host"] = connection.Host, ["port"] = connection.Port }
+            ["connection"] = new Dictionary<string, object>
+            {
+                ["host"] = connection.Host,
+                ["port"] = connection.Port
+            }
         };
         await documentRef.SetAsync(roomData, SetOptions.Overwrite, context.CancellationToken).ConfigureAwait(false);
 
@@ -124,7 +132,7 @@ public class LobbyService(
 
         var db = await firestore.GetDatabaseAsync().ConfigureAwait(false);
 
-        var connection = await db.RunTransactionAsync<Connection>(async transaction =>
+        var connection = await db.RunTransactionAsync<RoomConnectionInfo>(async transaction =>
         {
             var rooms = db.Collection("rooms");
 
@@ -173,140 +181,14 @@ public class LobbyService(
             transaction.Update(documentRef, "players", players);
 
             var connectionRaw = roomData["connection"] as Dictionary<string, object> ?? throw new InvalidOperationException("Room connection not found.");
-            var connection = new Connection { Host = connectionRaw["host"] as string ?? throw new InvalidOperationException("Host not found."), Port = (int)(connectionRaw["port"] as long? ?? throw new InvalidOperationException("Port not found.")) };
+            var connection = new RoomConnectionInfo
+            {
+                Host = connectionRaw["host"] as string ?? throw new InvalidOperationException("Host not found."),
+                Port = (int)(connectionRaw["port"] as long? ?? throw new InvalidOperationException("Port not found."))
+            };
             return connection;
         }, cancellationToken: context.CancellationToken).ConfigureAwait(false);
 
         return new JoinRoomResponse { Connection = connection };
     }
-
-    /*
-    [Authorize(Policy = "UserPolicy")]
-    public override async Task<GameServerInfo> CreateRoom(CreateRoomRequest request, ServerCallContext context)
-    {
-        var httpContext = context.GetHttpContext();
-        var user = httpContext.User;
-        _ = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User Id not found."));
-        var userName = user.FindFirstValue(ClaimTypes.Name) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User name not found."));
-        var requestIp = httpContext.Request.Host.Host;
-        logger.LogInformation("User {User} from {ip} is request creating a room.", userName, requestIp);
-
-        if (string.IsNullOrWhiteSpace(request.RoomName))
-        {
-            throw new RpcException(new Status(StatusCode.InvalidArgument, "Room name cannot be empty."));
-        }
-
-        if (request.RoomName.Length > 32)
-        {
-            throw new RpcException(new Status(StatusCode.InvalidArgument, "Room name is too long."));
-        }
-
-        var roomId = Guid.NewGuid().ToString("N");
-        var roomPassword = request.Visibility == RoomVisibility.Private ? roomEncryptor.HashPassword(roomId, request.Password) : string.Empty;
-
-        try
-        {
-            // Edgegap deployment
-            var deploymentRequest = new CreateDeploymentRequest
-            {
-                AppName = "stereomix",
-                VersionName = "demo-v1.0",
-                //EnvVars =
-                //[
-                //    new DeployEnvironment { Key = "ROOM_ID", Value = roomId },
-                //    new DeployEnvironment { Key = "ROOM_PASSWORD", Value = roomPassword, IsHidden = true },
-                //    new DeployEnvironment { Key = "MATCH_TYPE", Value = "Room" }
-                //],
-                IpList = ["180.224.212.10"]
-            };
-            var deploymentStatus = await edgegap.CreateDeploymentAsync(deploymentRequest, context.CancellationToken).ConfigureAwait(false);
-
-            var serverInfo = deploymentStatus.Ports?["Game"] ?? throw new InvalidOperationException("Game port is not found.");
-            var address = deploymentStatus.Fqdn;
-            var port = serverInfo.External;
-
-            // Firestore
-            var db = await firestore.GetDatabaseAsync().ConfigureAwait(false);
-            var rooms = db.Collection("rooms");
-
-            var roomInfo = new RoomInfo
-            {
-                RoomId = roomId,
-                RoomName = request.RoomName,
-                PasswordEncrypted = roomPassword,
-                Visibility = request.Visibility,
-                Mode = request.Mode,
-                Map = request.Map,
-                MaxPlayers = request.MaxPlayers,
-                Status = RoomStatus.Waiting,
-                GameServerAddress = address,
-                GameServerPort = port
-            };
-
-            var documentRef = rooms.Document(roomId);
-            await documentRef.SetAsync(roomInfo, SetOptions.Overwrite, context.CancellationToken).ConfigureAwait(false);
-
-            logger.LogInformation("Room {RoomId} is created by {User}.", roomId, userName);
-            return new CreateRoomResponse { CreatedRoomId = roomId };
-        }
-        catch (Exception e)
-        {
-            throw new RpcException(new Status(StatusCode.Internal, e.Message, e));
-        }
-    }
-
-    [Authorize(Policy = "UserPolicy")]
-    public override Task<JoinRoomResponse> JoinRoom(JoinRoomRequest request, ServerCallContext context)
-    {
-        return base.JoinRoom(request, context);
-    }
-
-    [Authorize(Policy = "UserPolicy")]
-    public override async Task<GetRoomListResponse> GetRoomList(GetRoomListRequest request, ServerCallContext context)
-    {
-        var user = context.GetHttpContext().User;
-        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User Id not found."));
-        var userName = user.FindFirstValue(ClaimTypes.Name) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User name not found."));
-        logger.LogInformation("User {User} is request getting room list.", userName);
-
-        var db = await firestore.GetDatabaseAsync().ConfigureAwait(false);
-        var rooms = db.Collection("rooms");
-        var query = rooms.WhereEqualTo("Status", RoomStatus.Waiting);
-        if (request.Visibility != RoomVisibility.Unspecified)
-        {
-            query = query.WhereEqualTo("Visibility", request.Visibility);
-        }
-
-        if (request.Mode != GameMode.Unspecified)
-        {
-            query = query.WhereEqualTo("Mode", request.Mode);
-        }
-
-        if (request.Map != GameMap.Unspecified)
-        {
-            query = query.WhereEqualTo("Map", request.Map);
-        }
-
-        var snapshot = await query.GetSnapshotAsync(context.CancellationToken).ConfigureAwait(false);
-        var roomList = snapshot.Documents.Select(doc => doc.ConvertTo<RoomInfo>()).ToList<>();
-        logger.LogInformation("User {User} got {RoomCount} rooms.", userName, roomList.Count);
-
-        var response = new GetRoomListResponse();
-        foreach (var roomInfo in roomList)
-        {
-            response.RoomList.Add(new LobbyRoomInfo
-            {
-                RoomId = roomInfo.RoomId,
-                RoomName = roomInfo.RoomName,
-                Visibility = roomInfo.Visibility,
-                Mode = roomInfo.Mode,
-                Map = roomInfo.Map,
-                MaxPlayers = roomInfo.MaxPlayers,
-                CurrentPlayers = roomInfo.Players.Count
-            });
-        }
-
-        return response;
-    }
-    */
 }

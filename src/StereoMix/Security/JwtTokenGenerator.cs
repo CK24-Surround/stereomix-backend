@@ -3,7 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 
-namespace StereoMix.JWT;
+namespace StereoMix.Security;
 
 public interface IJwtConfiguration
 {
@@ -26,12 +26,12 @@ public sealed class JwtConfiguration : IJwtConfiguration
     }
 }
 
-public interface IJwtTokenService
+public interface IJwtTokenGenrerator
 {
     string AuthenticateTemporary(string userName);
 }
 
-public class JwtTokenService(ILogger<JwtTokenService> logger) : IJwtTokenService
+public class JwtTokenGenerator : IJwtTokenGenrerator
 {
     public const string JwtSecretKeyName = "JWT_SECRET";
 

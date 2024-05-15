@@ -1,15 +1,13 @@
 using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
 using StereoMix.Auth;
-using StereoMix.Firestore;
-using StereoMix.JWT;
+using StereoMix.Security;
 
 namespace StereoMix.Grpc;
 
 public class AuthService(
     ILogger<AuthService> logger,
-    IJwtTokenService jwtToken,
-    IFirestoreService firestore) : Auth.AuthService.AuthServiceBase
+    IJwtTokenGenrerator jwtToken) : Auth.AuthService.AuthServiceBase
 {
     [AllowAnonymous]
     public override Task<Response> GuestLogin(GuestLoginRequest request, ServerCallContext context)

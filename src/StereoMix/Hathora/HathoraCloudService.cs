@@ -5,15 +5,14 @@ using Newtonsoft.Json;
 using RestSharp;
 using RestSharp.Authenticators;
 using RestSharp.Serializers.Json;
-using StereoMix.Hathora.Model;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace StereoMix.Hathora;
 
 public interface IHathoraCloudService
 {
-    Task<GetConnectionInfoResponse> CreateRoomAsync(CreateRoomRequest request, CancellationToken cancellationToken = default);
-    Task<GetConnectionInfoResponse> GetConnectionInfoAsync(GetConnectionInfoRequest request);
+    Task<HathoraGetConnectionInfoResponse> CreateRoomAsync(HathoraCreateRoomRequest request, CancellationToken cancellationToken = default);
+    Task<HathoraGetConnectionInfoResponse> GetConnectionInfoAsync(HathoraGetConnectionInfoRequest request);
 }
 
 public class HathoraAuthenticator(string apiKey) : IAuthenticator
@@ -55,16 +54,20 @@ public class HathoraCloudService : IHathoraCloudService, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    public async Task<GetConnectionInfoResponse> CreateRoomAsync(CreateRoomRequest request, CancellationToken cancellationToken = default)
+    public async Task<HathoraGetConnectionInfoResponse> CreateRoomAsync(HathoraCreateRoomRequest request, CancellationToken cancellationToken = default)
     {
         var resource = $"/rooms/v2/{_appId}/create";
 
         var response = await RequestAsync(resource, Method.Post, request,
-            AppJsonSerializerContext.Default.CreateRoomRequest,
-            AppJsonSerializerContext.Default.CreateRoomResponse,
+            AppJsonSerializerContext.Default.HathoraCreateRoomRequest,
+            AppJsonSerializerContext.Default.HathoraCreateRoomResponse,
             cancellationToken).ConfigureAwait(false);
 
-        var getConnectionInfoRequest = new GetConnectionInfoRequest { AppId = _appId, RoomId = response.RoomId };
+        var getConnectionInfoRequest = new HathoraGetConnectionInfoRequest
+        {
+            AppId = _appId,
+            RoomId = response.RoomId
+        };
         var count = 0;
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -87,11 +90,11 @@ public class HathoraCloudService : IHathoraCloudService, IDisposable
         throw new HttpRequestException(HttpRequestError.InvalidResponse, "CreateRoom timed out.");
     }
 
-    public async Task<GetConnectionInfoResponse> GetConnectionInfoAsync(GetConnectionInfoRequest request)
+    public async Task<HathoraGetConnectionInfoResponse> GetConnectionInfoAsync(HathoraGetConnectionInfoRequest request)
     {
         var resource = $"/rooms/v2/{_appId}/connectioninfo/{request.RoomId}";
         return await RequestAsync(resource, Method.Get,
-            AppJsonSerializerContext.Default.GetConnectionInfoResponse).ConfigureAwait(false);
+            AppJsonSerializerContext.Default.HathoraGetConnectionInfoResponse).ConfigureAwait(false);
     }
 
     private async Task<TResponse> RequestAsync<TResponse>(

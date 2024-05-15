@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 
-namespace StereoMix.Hathora.Model;
+namespace StereoMix.Hathora;
 
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public enum HathoraRegion
@@ -55,53 +55,53 @@ public class HathoraLoginResponse : HathoraResponse
     public required string Token { get; set; }
 }
 
-public class CreateRoomRequest : HathoraRequest
+public class HathoraCreateRoomRequest : HathoraRequest
 {
     public required string RoomId { get; set; }
     public required HathoraRegion Region { get; set; }
     public required string RoomConfig { get; set; }
 }
 
-public class CreateRoomResponse : HathoraResponse
+public class HathoraCreateRoomResponse : HathoraResponse
 {
     public required string ProcessId { get; set; }
     public required string RoomId { get; set; }
     public required HathoraRoomReadyStatus Status { get; set; }
-    public ExposedPort? ExposedPort { get; set; }
-    public List<ExposedPort>? AdditionalExposedPorts { get; set; }
+    public HathoraExposedPort? ExposedPort { get; set; }
+    public List<HathoraExposedPort>? AdditionalExposedPorts { get; set; }
 }
 
-public class GetRoomInfoRequest : HathoraRequest
+public class HathoraGetRoomInfoRequest : HathoraRequest
 {
     public required string AppId { get; set; }
     public required string RoomId { get; set; }
 }
 
-public class GetRoomInfoResponse : HathoraResponse
+public class HathoraGetRoomInfoResponse : HathoraResponse
 {
-    public RoomAllocation? CurrentAllocation { get; set; }
+    public HathoraRoomAllocation? CurrentAllocation { get; set; }
     public required HathoraRoomStatus Status { get; set; }
-    public List<RoomAllocation>? Allocations { get; set; }
+    public List<HathoraRoomAllocation>? Allocations { get; set; }
     public required string RoomConfig { get; set; }
     public required string RoomId { get; set; }
     public required string AppId { get; set; }
 }
 
-public class GetConnectionInfoRequest : HathoraRequest
+public class HathoraGetConnectionInfoRequest : HathoraRequest
 {
     public required string AppId { get; set; }
     public required string RoomId { get; set; }
 }
 
-public class GetConnectionInfoResponse : HathoraResponse
+public class HathoraGetConnectionInfoResponse : HathoraResponse
 {
     public required string RoomId { get; set; }
     public required HathoraRoomReadyStatus Status { get; set; }
-    public ExposedPort? ExposedPort { get; set; }
-    public List<ExposedPort>? AdditionalExposedPorts { get; set; }
+    public HathoraExposedPort? ExposedPort { get; set; }
+    public List<HathoraExposedPort>? AdditionalExposedPorts { get; set; }
 }
 
-public class ExposedPort
+public class HathoraExposedPort
 {
     public required HathoraTransportType TransportType { get; set; }
     public required int Port { get; set; }
@@ -109,7 +109,7 @@ public class ExposedPort
     public required string Name { get; set; }
 }
 
-public class RoomAllocation
+public class HathoraRoomAllocation
 {
     public required DateTime UnscheduledAt { get; set; }
     public required DateTime ScheduledAt { get; set; }

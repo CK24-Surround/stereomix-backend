@@ -2,14 +2,14 @@
 
 namespace StereoMix.Security;
 
-public interface IRoomEncryptService
+public interface IRoomEncryptor
 {
     string HashPassword(string roomId, string password);
 
     PasswordVerificationResult VerifyHashedPassword(string roomId, string hashedPassword, string providedPassword);
 }
 
-public class RoomEncryptService : IRoomEncryptService
+public class RoomEncryptor : IRoomEncryptor
 {
     private readonly PasswordHasher<string> _hasher = new();
 

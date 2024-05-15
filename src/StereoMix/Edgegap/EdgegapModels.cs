@@ -1,4 +1,4 @@
-namespace StereoMix.Edgegap.Model;
+namespace StereoMix.Edgegap;
 
 public class SessionEnvironment
 {

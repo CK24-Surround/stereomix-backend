@@ -1,6 +1,6 @@
-using StereoMix.Auth;
 using Grpc.Core;
 using Grpc.Net.Client;
+using StereoMix.Auth;
 using StereoMix.Greet;
 
 if (args.Length < 1)
