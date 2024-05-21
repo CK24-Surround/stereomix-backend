@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "EdgegapTestClient": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "EDGEGAP_API_KEY": "token 9fc6040f-5429-4d1f-af2d-de30de97091c"
+      }
+    }
+  }
+}

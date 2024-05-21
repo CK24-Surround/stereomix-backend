@@ -1,13 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using StereoMix.Edgegap;
-using StereoMix.Hathora;
 
 namespace StereoMix;
 
 [JsonSourceGenerationOptions(
-    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
-    GenerationMode = JsonSourceGenerationMode.Metadata,
     UnmappedMemberHandling = JsonUnmappedMemberHandling.Skip,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
     UseStringEnumConverter = true,
@@ -17,15 +13,7 @@ namespace StereoMix;
         typeof(NullableIntJsonConverter),
         typeof(NullableDoubleJsonConverter)
     ])]
-[JsonSerializable(typeof(CreateDeploymentRequest))]
-[JsonSerializable(typeof(CreateDeploymentResponse))]
-[JsonSerializable(typeof(DeploymentStatus))]
-[JsonSerializable(typeof(HathoraCreateRoomRequest))]
-[JsonSerializable(typeof(HathoraCreateRoomResponse))]
-[JsonSerializable(typeof(HathoraGetRoomInfoRequest))]
-[JsonSerializable(typeof(HathoraGetRoomInfoResponse))]
-[JsonSerializable(typeof(HathoraGetConnectionInfoRequest))]
-[JsonSerializable(typeof(HathoraGetConnectionInfoResponse))]
+[JsonSerializable(typeof(int))]
 public partial class AppJsonSerializerContext : JsonSerializerContext
 {
 }

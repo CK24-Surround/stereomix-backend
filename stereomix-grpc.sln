@@ -16,6 +16,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "솔루션 항목", "솔루�
 		README.md = README.md
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EdgegapTestClient", "src\EdgegapTestClient\EdgegapTestClient.csproj", "{BE6B4131-904C-4446-B5B8-8A0A0BA61D0A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Edgegap", "src\Edgegap\Edgegap.csproj", "{E7BB7F0C-B9B6-42E8-8849-FAC30726FB84}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,6 +34,14 @@ Global
 		{1373FFEA-E48F-4A79-8243-80E55113102E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1373FFEA-E48F-4A79-8243-80E55113102E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1373FFEA-E48F-4A79-8243-80E55113102E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE6B4131-904C-4446-B5B8-8A0A0BA61D0A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE6B4131-904C-4446-B5B8-8A0A0BA61D0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE6B4131-904C-4446-B5B8-8A0A0BA61D0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE6B4131-904C-4446-B5B8-8A0A0BA61D0A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E7BB7F0C-B9B6-42E8-8849-FAC30726FB84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E7BB7F0C-B9B6-42E8-8849-FAC30726FB84}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E7BB7F0C-B9B6-42E8-8849-FAC30726FB84}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E7BB7F0C-B9B6-42E8-8849-FAC30726FB84}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

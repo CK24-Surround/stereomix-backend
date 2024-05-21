@@ -21,7 +21,7 @@ Console.WriteLine("Connected.");
 
 var authService = new AuthService.AuthServiceClient(channel);
 Console.WriteLine("Requesting token...");
-var loginResponse = await authService.GuestLoginAsync(new GuestLoginRequest { UserName = "StereoMixTestClient" });
+var loginResponse = await authService.GuestLoginAsync(new GuestLoginRequest { UserName = "TestUser" });
 Console.WriteLine("Token: " + loginResponse.Token);
 
 var headers = new Metadata { { "authorization", "Bearer " + loginResponse.Token } };
@@ -34,5 +34,5 @@ try
 }
 catch (RpcException e) when (e.StatusCode == StatusCode.Unauthenticated)
 {
-    Console.WriteLine("Unauthenticated.");
+    Console.WriteLine($"Unauthenticated. {e.Message}");
 }

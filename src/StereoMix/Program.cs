@@ -1,41 +1,25 @@
 using System.Net;
-using System.Security.Claims;
 using System.Text;
+using Edgegap;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using StereoMix;
-using StereoMix.Edgegap;
 using StereoMix.Firestore;
 using StereoMix.Grpc;
-using StereoMix.Hathora;
 using StereoMix.Security;
-using AuthService = StereoMix.Grpc.AuthService;
+using StereoMix.Storage;
 
-var builder = WebApplication.CreateSlimBuilder(args);
-
-builder.WebHost
-    .UseKestrel(options =>
-    {
-        var port = int.Parse(Environment.GetEnvironmentVariable("PORT") ?? "8080");
-        options.Listen(IPAddress.Any, port, listenOptions => { listenOptions.Protocols = HttpProtocols.Http2; });
-    });
-
-var configuration = builder.Configuration;
-
-configuration.AddEnvironmentVariables("JWT_");
+var builder = WebApplication.CreateBuilder(args);
 
 var services = builder.Services;
+var configuration = builder.Configuration;
 
-services.ConfigureHttpJsonOptions(options => { options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default); });
-
-// TODO: Configure로 JWT 환경변수 옮기기
-services.Configure<JwtConfiguration>(options =>
+builder.WebHost.UseKestrel(options =>
 {
-    options.Secret = configuration["JWT_SECRET"] ?? throw new KeyNotFoundException("Can not found JWT_SECRET");
-    options.Issuer = configuration["JWT_ISSUER"] ?? throw new KeyNotFoundException("Can not found JWT_ISSUER");
-    options.Audience = configuration["JWT_AUDIENCE"] ?? throw new KeyNotFoundException("Can not found JWT_AUDIENCE");
+    var port = int.Parse(configuration["PORT"] ?? "8080");
+    options.Listen(IPAddress.Any, port, listenOptions => { listenOptions.Protocols = HttpProtocols.Http2; });
 });
 
 services
@@ -44,52 +28,60 @@ services
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     })
-    .AddJwtBearer(options =>
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
     {
-        var key = Environment.GetEnvironmentVariable(JwtTokenGenerator.JwtSecretKeyName) ?? throw new InvalidOperationException("JWT_SECRET is not set");
-        var keyBytes = Encoding.ASCII.GetBytes(key);
+        var key = configuration["JWT_SECRET"] ?? throw new KeyNotFoundException("JWT_SECRET is not set in Environment Variables");
+        var issuer = configuration["StereoMix:JWT:Issuer"] ?? throw new KeyNotFoundException("StereoMix:JWT:Issuer is not set in appsettings.json");
+        var gameServerAudience = configuration["StereoMix:JWT:Audience:GameServer"] ?? throw new KeyNotFoundException("StereoMix:JWT:Audience:GameServer is not set in appsettings.json");
+        var clientAudience = configuration["StereoMix:JWT:Audience:Client"] ?? throw new KeyNotFoundException("StereoMix:JWT:Audience:Client is not set in appsettings.json");
+
         options.SaveToken = true;
         options.RequireHttpsMetadata = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(key)),
             ValidateIssuer = true,
-            ValidIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? throw new InvalidOperationException("JWT_ISSUER is not set"),
+            ValidIssuer = issuer,
             ValidateAudience = true,
-            ValidAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? throw new InvalidOperationException("JWT_AUDIENCE is not set"),
+            ValidAudiences = [gameServerAudience, clientAudience],
             ValidateLifetime = true
         };
     });
 
 services
     .AddAuthorizationBuilder()
-    .AddPolicy("UserPolicy", policy =>
-        policy
-            .RequireAuthenticatedUser()
-            .RequireRole("User")
-            .RequireClaim(ClaimTypes.NameIdentifier)
-            .RequireClaim(ClaimTypes.Name));
+    .AddPolicy(StereoMixPolicy.AuthorizeUserOnlyPolicy, policy =>
+    {
+        policy.RequireRole(StereoMixRole.UserRole);
+        // policy.RequireClaim(StereoMixClaimTypes.Role, StereoMixRole.UserRole);
+        policy.RequireClaim(StereoMixClaimTypes.UserId);
+        policy.RequireClaim(StereoMixClaimTypes.UserName);
+    })
+    .AddPolicy(StereoMixPolicy.AuthorizeGameServerOnlyPolicy, policy =>
+    {
+        policy.RequireRole(StereoMixRole.GameServerRole);
+        // policy.RequireClaim(StereoMixClaimTypes.Role, StereoMixRole.GameServerRole);
+        policy.RequireClaim(StereoMixClaimTypes.RoomId);
+    });
 
-services.AddGrpc(options => { options.EnableDetailedErrors = true; });
+
+services.AddGrpc();
 services.AddGrpcHealthChecks().AddCheck("StereoMix", () => HealthCheckResult.Healthy());
-
-services.AddSingleton<IJwtTokenGenrerator, JwtTokenGenerator>();
-services.AddSingleton<IFirestore, Firestore>();
+services.AddSingleton<IJwtTokenProvider, JwtTokenProvider>();
+services.AddSingleton<IFirestoreClient, FirestoreClient>();
 services.AddSingleton<IRoomEncryptor, RoomEncryptor>();
-services.AddSingleton<IEdgegapService, EdgegapService>();
-services.AddSingleton<IHathoraCloudService, HathoraCloudService>();
+services.AddSingleton<IUserStorage, UserStorage>();
+services.AddSingleton<ILobbyStorage, LobbyStorage>();
+services.AddHttpClient<IEdgegapClient, EdgegapClient>().ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+
 
 var app = builder.Build();
-
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapGrpcHealthChecksService();
-
-// v1
 app.MapGrpcService<AuthService>();
-// app.MapGrpcService<GreeterService>();
+app.MapGrpcService<GreeterService>();
 app.MapGrpcService<LobbyService>();
-
 app.Run();

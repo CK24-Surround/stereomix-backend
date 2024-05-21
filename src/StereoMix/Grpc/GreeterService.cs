@@ -4,8 +4,7 @@ using StereoMix.Greet;
 
 namespace StereoMix.Grpc;
 
-public class GreeterService(
-    ILogger<GreeterService> logger) : Greet.GreeterService.GreeterServiceBase
+public class GreeterService(ILogger<GreeterService> logger) : Greet.GreeterService.GreeterServiceBase
 {
     [Authorize]
     public override Task<HelloResponse> SayHello(HelloRequest request, ServerCallContext context)

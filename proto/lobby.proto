@@ -2,31 +2,41 @@ syntax = "proto3";
 
 package lobby;
 
-import "google/protobuf/timestamp.proto";
-
 option csharp_namespace = "StereoMix.Lobby";
 option cc_enable_arenas = true;
 
 service LobbyService {
-  rpc CreateRoom(CreateRoomRequest) returns (CreateRoomResponse);
+  // For User
+  rpc CreateRoom(CreateRoomRequest) returns (stream CreateRoomResponse);
   rpc JoinRoom(JoinRoomRequest) returns (JoinRoomResponse);
   rpc GetRoomList(GetRoomListRequest) returns (GetRoomListResponse);
+
+  // For GameServer
   rpc UpdateRoomState(UpdateRoomStateRequest) returns (UpdateRoomStateResponse);
   rpc UpdateRoomConfig(UpdateRoomConfigRequest) returns (UpdateRoomConfigResponse);
-  rpc UpdatePlayerState(UpdatePlayerStateRequest) returns (UpdatePlayerStateResponse);
   rpc ChangeRoomPassword(ChangeRoomPasswordRequest) returns (ChangeRoomPasswordResponse);
   rpc ChangeRoomOwner(ChangeRoomOwnerRequest) returns (ChangeRoomOwnerResponse);
   rpc DeleteRoom(DeleteRoomRequest) returns (DeleteRoomResponse);
-  rpc UpdateRoomConfigStream(ListenRoomConfigUpdatesRequest) returns (stream ListenRoomConfigUpdatesResponse);
-  rpc UpdatePlayerListStream(ListenPlayerListUpdatesRequest) returns (stream ListenPlayerListUpdatesResponse);
+  rpc ListenRoomUpdates(ListenRoomUpdatesRequest) returns (stream Room);
+}
+
+enum RoomDeploymentStatus {
+  ROOM_DEPLOYMENT_STATUS_UNSPECIFIED = 0;
+  ROOM_DEPLOYMENT_STATUS_INITIALIZING = 1;
+  ROOM_DEPLOYMENT_STATUS_SEEKING = 2;
+  ROOM_DEPLOYMENT_STATUS_SEEKED = 3;
+  ROOM_DEPLOYMENT_STATUS_SCANNING = 4;
+  ROOM_DEPLOYMENT_STATUS_DEPLOYING = 5;
+  ROOM_DEPLOYMENT_STATUS_READY = 6;
+  ROOM_DEPLOYMENT_STATUS_TERMINATED = 7;
+  ROOM_DEPLOYMENT_STATUS_ERROR = 8;
 }
 
 enum RoomState {
   ROOM_STATE_UNSPECIFIED = 0;
-  ROOM_STATE_CREATING = 1;
-  ROOM_STATE_WAITING = 2;
-  ROOM_STATE_PLAYING = 3;
-  ROOM_STATE_CLOSED = 4;
+  ROOM_STATE_OPEN = 1;
+  ROOM_STATE_PLAYING = 2;
+  ROOM_STATE_CLOSED = 3;
 }
 
 enum RoomVisibility {
@@ -45,33 +55,48 @@ enum GameMap {
   GAME_MAP_DEFAULT = 1;
 }
 
-enum PlayerState {
-  PLAYER_STATE_UNSPECIFIED = 0;
-  PLAYER_STATE_JOINING = 1;
-  PLAYER_STATE_JOINED = 2;
-  PLAYER_STATE_LEAVE = 3;
+message RoomConnectionInfo {
+  string host = 1;
+  int32 port = 2;
 }
 
-message RoomPreview {
+message RoomConfig {
+  string room_name = 1;
+  RoomVisibility visibility = 3;
+  GameMode mode = 4;
+  GameMap map = 5;
+}
+
+message Room {
   string room_id = 1;
-  RoomConfig config = 2;
-  int32 current_players = 3;
+  string short_room_id = 2;
+  string owner_id = 3;
+  RoomConfig config = 4;
+  RoomState state = 5;
+  int32 max_players = 6;
+  int32 current_players = 7;
+  RoomConnectionInfo connection = 8;
 }
 
 // CreateRoom
 message CreateRoomRequest {
-  RoomConfig config = 1;
+  string room_name = 1;
   string password = 2;
+  RoomConfig config = 3;
 }
 
 message CreateRoomResponse {
-  RoomConnectionInfo connection = 1;
+  RoomDeploymentStatus deploy_status = 1;
+  RoomConnectionInfo connection = 2;
 }
 
 // JoinRoom
 message JoinRoomRequest {
-  string room_id = 1;
-  string password = 2;
+  oneof id {
+    string room_id = 1;
+    string short_room_id = 2;
+  }
+  string password = 3;
 }
 
 message JoinRoomResponse {
@@ -86,105 +111,52 @@ message GetRoomListRequest {
 }
 
 message GetRoomListResponse {
-  repeated RoomPreview rooms = 1;
-}
-message RoomConnectionInfo {
-  string host = 1;
-  int32 port = 2;
+  repeated Room rooms = 1;
 }
 
-message RoomPlayer {
-  string user_id = 1;
-  string user_name = 2;
-  PlayerState state = 3;
-  bool is_owner = 4;
-  google.protobuf.Timestamp joined_at = 5;
-}
-
-message Room {
-  string room_id = 1;
-  string password_encrypted = 2;
-  RoomState state = 3;
-  string owner_id = 4;
-  RoomConfig config = 5;
-  repeated RoomPlayer players = 6;
-  int32 player_count = 7;
-  RoomConnectionInfo connection = 8;
-}
-
-message RoomConfig {
-  string room_name = 1;
-  RoomVisibility visibility = 2;
-  GameMode mode = 3;
-  GameMap map = 4;
-  int32 max_players = 5;
-}
-
+// UpdateRoomState
 message UpdateRoomStateRequest {
-  string room_id = 1;
-  RoomState state = 2;
+  RoomState state = 1;
 }
 
 message UpdateRoomStateResponse {
   RoomState updated_state = 1;
 }
 
+// UpdateRoomConfig
 message UpdateRoomConfigRequest {
-  string room_id = 1;
-  RoomConfig config = 2;
+  RoomConfig config = 1;
 }
 
 message UpdateRoomConfigResponse {
   RoomConfig updated_config = 1;
 }
 
-message UpdatePlayerStateRequest {
-  string room_id = 1;
-  string user_id = 2;
-  PlayerState state = 3;
-}
-
-message UpdatePlayerStateResponse {
-  string user_id = 1;
-  PlayerState updated_state = 2;
-}
-
+// ChangeRoomPassword
 message ChangeRoomPasswordRequest {
-  string room_id = 1;
-  string password = 2;
+  string password = 1;
 }
 
 message ChangeRoomPasswordResponse {
+  string room_id = 1;
 }
 
+// ChangeRoomOwner
 message ChangeRoomOwnerRequest {
-  string room_id = 1;
-  string user_id = 2;
+  string new_owner_id = 1;
 }
 
 message ChangeRoomOwnerResponse {
   string owner_id = 1;
 }
 
+// DeleteRoom
 message DeleteRoomRequest {
-  string room_id = 1;
 }
 
 message DeleteRoomResponse {
 }
 
-message ListenRoomConfigUpdatesRequest {
-  string room_id = 1;
-}
-
-message ListenRoomConfigUpdatesResponse {
-  RoomConfig updated_config = 1;
-}
-
-message ListenPlayerListUpdatesRequest {
-  string room_id = 1;
-}
-
-message ListenPlayerListUpdatesResponse {
-  repeated RoomPlayer players = 1;
+// ListenRoomUpdates
+message ListenRoomUpdatesRequest {
 }
