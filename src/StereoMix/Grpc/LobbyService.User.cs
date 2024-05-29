@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Security.Claims;
 using Edgegap;
@@ -14,25 +15,25 @@ namespace StereoMix.Grpc;
 public partial class LobbyService
 {
     [Authorize(Policy = StereoMixPolicy.AuthorizeUserOnlyPolicy)]
-    public override async Task CreateRoom(CreateRoomRequest request, IServerStreamWriter<CreateRoomResponse> responseStream, ServerCallContext context)
+    public override async Task<CreateRoomResponse> CreateRoom(CreateRoomRequest request, ServerCallContext context)
     {
         var httpContext = context.GetHttpContext();
         var user = httpContext.User;
-        // var userId = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User Id not found."));
+        var _ = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User Id not found."));
         var userName = user.FindFirstValue(StereoMixClaimTypes.UserName) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User name not found."));
         var requestIp = httpContext.Connection.RemoteIpAddress;
+
         if (requestIp is null)
         {
-            throw new RpcException(new Status(StatusCode.Aborted, "Request IP not found."));
+            Logger.LogWarning("Request IP not found. Set request ip to default.");
+            requestIp = IPAddress.Loopback;
         }
 
-        // Test
-        // if (Equals(requestIp, IPAddress.Loopback))
-        // {
-        //     requestIp = IPAddress.Parse("121.157.127.18");
-        // }
-        // Temp
-        requestIp = IPAddress.Parse("121.157.127.18");
+        // For Test
+        if (Equals(requestIp, IPAddress.Loopback))
+        {
+            requestIp = IPAddress.Parse("121.157.127.18"); // 청강대 아이피
+        }
 
         Logger.LogDebug("User {User} from {ip} is request creating a room.", userName, requestIp);
 
@@ -48,35 +49,94 @@ public partial class LobbyService
 
         var roomId = IdGenerator.GenerateRoomId();
         var shortRoomId = IdGenerator.GenerateShortRoomId();
-        var serverAuthToken = JwtTokenProvider.AuthenticateGameServer(roomId);
+        var gameServerAuthToken = JwtTokenProvider.AuthenticateGameServer(roomId);
 
-        EdgegapDeploymentStatusType deploymentStatus;
         string deploymentId;
-        RoomConnectionInfo? roomConnection;
+
         try
         {
-            (deploymentStatus, deploymentId, roomConnection) = await CreateDeploymentAsync(serverAuthToken, requestIp.ToString()).ConfigureAwait(false);
-            Logger.LogDebug("Deployment created. Status: {Status}, DeploymentId: {DeploymentId}", deploymentStatus, deploymentId);
+            var response = await CreateDeploymentAsync().ConfigureAwait(false);
+            Logger.LogDebug(
+                "Deployment creating: RequestId={RequestId}, AppVersion={AppVersion}, Location={City}, {Country}, {Continent}",
+                response.RequestId, response.RequestVersion, response.City, response.Country, response.Continent);
+
+            deploymentId = response.RequestId;
+        }
+        catch (TaskCanceledException)
+        {
+            Logger.LogWarning("Deployment creation cancelled.");
+            throw new RpcException(new Status(StatusCode.Cancelled, "Deployment creation cancelled."));
         }
         catch (EdgegapException e)
         {
             Logger.LogError("Failed to create deployment. {Error}", e.ToString());
-            if (e.Response.Errors != null)
+            if (e.Response.Errors == null)
             {
-                foreach (var (name, message) in e.Response.Errors)
-                {
-                    Logger.LogTrace("{Name}: {Message}", name, message);
-                }
+                throw new RpcException(new Status(StatusCode.Internal, "Failed to create deployment."));
+            }
+
+            foreach (var (name, message) in e.Response.Errors)
+            {
+                Logger.LogTrace("{Name}: {Message}", name, message);
             }
 
             throw new RpcException(new Status(StatusCode.Internal, "Failed to create deployment."));
         }
 
-        if (roomConnection is null)
+        EdgegapDeploymentStatus? deploymentStatus = null;
+        try
         {
-            Logger.LogError("Deployment create failed. LastStatus: {Status}", deploymentStatus);
-            throw new RpcException(new Status(StatusCode.Internal, "Deployment create failed."));
+            // repeat until deployment is ready
+            var retryCount = 50;
+
+            while (retryCount > 0)
+            {
+                var response = await Edgegap.GetDeploymentStatusAsync(deploymentId, context.CancellationToken).ConfigureAwait(false);
+                Logger.LogDebug("Deployment status for {RequestId}: {Status}", response.RequestId, response.CurrentStatus.ToString());
+
+                if (response.CurrentStatus is EdgegapDeploymentStatusType.Ready)
+                {
+                    deploymentStatus = response;
+                    break;
+                }
+
+                await Task.Delay(2000, context.CancellationToken).ConfigureAwait(false);
+
+                retryCount--;
+            }
+
+            if (retryCount == 0)
+            {
+                Logger.LogWarning("Deployment status is not ready.");
+                throw new RpcException(new Status(StatusCode.DeadlineExceeded, "Deployment status is not ready."));
+            }
         }
+        catch (TaskCanceledException)
+        {
+            Logger.LogWarning("Deployment creation cancelled.");
+            throw new RpcException(new Status(StatusCode.Cancelled, "Deployment creation cancelled."));
+        }
+        catch (EdgegapException e)
+        {
+            Logger.LogError(e, "Failed to create deployment when get deployment status");
+            throw new RpcException(new Status(StatusCode.Internal, "Failed to create deployment."));
+        }
+        finally
+        {
+            if (deploymentStatus is null)
+            {
+                Logger.LogWarning("Deployment status is null. Deleting deployment.");
+                await Edgegap.DeleteDeploymentAsync(deploymentId, context.CancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        Debug.Assert(deploymentStatus != null, nameof(deploymentStatus) + "is null.");
+
+        var roomConnection = new RoomConnectionInfo
+        {
+            Host = deploymentStatus.Fqdn,
+            Port = deploymentStatus.Ports?.GetValueOrDefault("Game")?.External ?? throw new InvalidOperationException("Game port not found.")
+        };
 
         var roomData = new LobbyStorageData
         {
@@ -102,24 +162,26 @@ public partial class LobbyService
         var storageResponse = await LobbyStorage.CreateRoomAsync(roomData, context.CancellationToken).ConfigureAwait(false);
         if (storageResponse is StorageResponse.Success)
         {
-            return;
+            return new CreateRoomResponse { Connection = roomConnection };
         }
 
         Logger.LogError("Failed to save room data to db. ({Response})", storageResponse);
+
+        await Edgegap.DeleteDeploymentAsync(deploymentId, context.CancellationToken).ConfigureAwait(false);
         throw new RpcException(new Status(StatusCode.Internal, "Failed to create room."));
 
-        async ValueTask<(EdgegapDeploymentStatusType status, string deploymentId, RoomConnectionInfo? connection)> CreateDeploymentAsync(string authToken, string ip)
+        Task<EdgegapCreateDeploymentResponse> CreateDeploymentAsync()
         {
             var createDeploymentRequest = new EdgegapCreateDeploymentRequest
             {
                 AppName = Edgegap.Config.AppName,
-                VersionName = Edgegap.Config.AppVersion,
+                // VersionName = Edgegap.Config.AppVersion,
                 EnvVars =
                 [
                     new EdgegapDeployEnvironment
                     {
                         Key = "STEREOMIX_AUTH_TOKEN",
-                        Value = authToken,
+                        Value = gameServerAuthToken,
                         IsHidden = true
                     },
                     new EdgegapDeployEnvironment
@@ -135,49 +197,20 @@ public partial class LobbyService
                         IsHidden = false
                     }
                 ],
-                IpList = [ip],
+                Filters =
+                [
+                    new EdgegapDeploymentFilter
+                    {
+                        Field = EdgegapDeploymentFilterFieldType.Country,
+                        FilterType = EdgegapDeploymentFilterType.Any,
+                        Values = ["South Korea", "Japan"]
+                    }
+                ],
+                IpList = [requestIp.ToString()],
                 Tags = ["CustomRoom"]
             };
 
-            var createDeploymentResponse = await Edgegap.CreateDeploymentAsync(createDeploymentRequest, context.CancellationToken).ConfigureAwait(false);
-            var requestId = createDeploymentResponse.RequestId;
-            Logger.LogDebug("New deployment created: RequestId={requestId},City={city}", requestId, createDeploymentResponse.City);
-
-            var status = EdgegapDeploymentStatusType.Unspecified;
-            RoomConnectionInfo? connection = null;
-
-            var retryCount = 100;
-            while (retryCount > 0)
-            {
-                var getStatusResponse = await Edgegap.GetDeploymentStatusAsync(requestId, context.CancellationToken).ConfigureAwait(false);
-                status = getStatusResponse.CurrentStatus;
-
-                Logger.LogDebug("Deployment status for {RequestId}: {Status}", requestId, status);
-
-                var createRoomResponse = new CreateRoomResponse { DeployStatus = status.ToRoomDeploymentStatus() };
-                if (status is EdgegapDeploymentStatusType.Ready or EdgegapDeploymentStatusType.Terminated or EdgegapDeploymentStatusType.Error)
-                {
-                    if (status is EdgegapDeploymentStatusType.Ready)
-                    {
-                        connection = new RoomConnectionInfo
-                        {
-                            Host = getStatusResponse.Fqdn,
-                            Port = getStatusResponse.Ports?.GetValueOrDefault("Game")?.External ?? throw new InvalidOperationException("Game port not found.")
-                        };
-                        createRoomResponse.Connection = connection;
-                    }
-
-                    await responseStream.WriteAsync(createRoomResponse, context.CancellationToken).ConfigureAwait(false);
-                    break;
-                }
-
-                await responseStream.WriteAsync(createRoomResponse, context.CancellationToken).ConfigureAwait(false);
-                await Task.Delay(2000, context.CancellationToken).ConfigureAwait(false);
-
-                retryCount++;
-            }
-
-            return (status, requestId, connection);
+            return Edgegap.CreateDeploymentAsync(createDeploymentRequest, context.CancellationToken);
         }
     }
 

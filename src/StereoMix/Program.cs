@@ -1,10 +1,14 @@
 using System.Net;
 using System.Text;
+
 using Edgegap;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
+
 using StereoMix;
 using StereoMix.Firestore;
 using StereoMix.Grpc;
@@ -65,7 +69,6 @@ services
         policy.RequireClaim(StereoMixClaimTypes.RoomId);
     });
 
-
 services.AddGrpc();
 services.AddGrpcHealthChecks().AddCheck("StereoMix", () => HealthCheckResult.Healthy());
 services.AddSingleton<IJwtTokenProvider, JwtTokenProvider>();
@@ -75,8 +78,13 @@ services.AddSingleton<IUserStorage, UserStorage>();
 services.AddSingleton<ILobbyStorage, LobbyStorage>();
 services.AddHttpClient<IEdgegapClient, EdgegapClient>().ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
 
-
 var app = builder.Build();
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();

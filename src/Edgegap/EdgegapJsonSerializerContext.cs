@@ -1,5 +1,6 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
+
 using Edgegap.Model;
 
 namespace Edgegap;
@@ -13,6 +14,7 @@ namespace Edgegap;
         typeof(NullableIntJsonConverter),
         typeof(NullableDoubleJsonConverter),
         typeof(NullableDateTimeJsonConverter),
+        typeof(EdgegapEnumJsonConverter<EdgegapDeploymentFilterFieldType>),
         typeof(EdgegapEnumJsonConverter<EdgegapDeploymentFilterType>),
         typeof(EdgegapEnumJsonConverter<EdgegapApSortStrategyType>),
         typeof(EdgegapDeploymentStatusTypeJsonConverter)

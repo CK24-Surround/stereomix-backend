@@ -7,6 +7,16 @@ public class EdgegapDeployEnvironment
     public bool IsHidden { get; set; }
 }
 
+public enum EdgegapDeploymentFilterFieldType
+{
+    City,
+    Country,
+    Continent,
+    Region,
+    AdministrativeDivision,
+    LocationsTags
+}
+
 public enum EdgegapDeploymentFilterType
 {
     Any,
@@ -35,9 +45,9 @@ public enum EdgegapDeploymentStatusType
 
 public class EdgegapDeploymentFilter
 {
-    public required string Field { get; set; }
-    public required List<string> Values { get; set; }
+    public required EdgegapDeploymentFilterFieldType Field { get; set; }
     public required EdgegapDeploymentFilterType FilterType { get; set; }
+    public required List<string> Values { get; set; }
 }
 
 public class EdgegapDeploymentLocation
