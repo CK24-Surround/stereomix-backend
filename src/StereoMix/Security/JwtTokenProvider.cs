@@ -2,12 +2,13 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
+using StereoMix.Auth;
 
 namespace StereoMix.Security;
 
 public interface IJwtTokenProvider
 {
-    string AuthenticateUser(string userId, string userName);
+    string AuthenticateUser(UserAccount account);
     string AuthenticateGameServer(string id);
     Task<TokenValidationResult> ValidateTokenAsync(string token);
 }
@@ -38,13 +39,13 @@ public class JwtTokenProvider : IJwtTokenProvider
         _credentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.ASCII.GetBytes(secret)), SecurityAlgorithms.HmacSha256Signature);
     }
 
-    public string AuthenticateUser(string userId, string userName)
+    public string AuthenticateUser(UserAccount account)
     {
         var identity = new ClaimsIdentity(new[]
         {
             new Claim(ClaimTypes.Role, StereoMixRole.UserRole),
-            new Claim(StereoMixClaimTypes.UserName, userName),
-            new Claim(StereoMixClaimTypes.UserId, userId)
+            new Claim(StereoMixClaimTypes.UserId, account.UserId),
+            new Claim(StereoMixClaimTypes.UserName, account.UserName)
         });
 
         return Authenticate(identity, _clientAudience);
@@ -86,13 +87,9 @@ public class JwtTokenProvider : IJwtTokenProvider
             SigningCredentials = _credentials,
             Expires = DateTime.UtcNow.AddMinutes(360)
         };
-
-        // debug descriptor
-        _logger.LogDebug("Issuer: {Issuer}", tokenDescriptor.Issuer);
-        _logger.LogDebug("Audience: {Audience}", tokenDescriptor.Audience);
-        _logger.LogDebug("Subject: {Subject}", tokenDescriptor.Subject);
-        _logger.LogDebug("SigningCredentials: {SigningCredentials}", tokenDescriptor.SigningCredentials);
-        _logger.LogDebug("Expires: {Expires}", tokenDescriptor.Expires);
+        _logger.LogDebug(
+            "TokenDescriptor Information:\n\tIssuer: {Issuer}\n\tAudience: {Audience}\n\tSubject: {Subject}\n\tSigningCredentials: {SigningCredentials}\n\tExpires: {Expires}",
+            tokenDescriptor.Issuer, tokenDescriptor.Audience, tokenDescriptor.Subject, tokenDescriptor.SigningCredentials, tokenDescriptor.Expires);
 
         var token = tokenHandler.CreateToken(tokenDescriptor);
         return tokenHandler.WriteToken(token);

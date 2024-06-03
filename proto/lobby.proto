@@ -8,7 +8,9 @@ option cc_enable_arenas = true;
 service LobbyService {
   // For User
   rpc CreateRoom(CreateRoomRequest) returns (CreateRoomResponse);
+  rpc QuickMatch(QuickMatchRequest) returns (QuickMatchResponse);
   rpc JoinRoom(JoinRoomRequest) returns (JoinRoomResponse);
+  rpc JoinRoomWithCode(JoinRoomWithCodeRequest) returns (JoinRoomWithCodeResponse);
   rpc GetRoomList(GetRoomListRequest) returns (GetRoomListResponse);
 
   // For GameServer
@@ -57,7 +59,7 @@ message RoomConfig {
 
 message Room {
   string room_id = 1;
-  string short_room_id = 2;
+  string room_code = 2;
   string owner_id = 3;
   RoomConfig config = 4;
   RoomState state = 5;
@@ -74,19 +76,33 @@ message CreateRoomRequest {
 }
 
 message CreateRoomResponse {
-  RoomConnectionInfo connection = 2;
+  RoomConnectionInfo connection = 1;
+}
+
+// QuickMatch
+message QuickMatchRequest {
+}
+
+message QuickMatchResponse {
+  RoomConnectionInfo connection = 1;
 }
 
 // JoinRoom
 message JoinRoomRequest {
-  oneof id {
-    string room_id = 1;
-    string short_room_id = 2;
-  }
-  string password = 3;
+  string room_id = 1;
+  string password = 2;
 }
 
 message JoinRoomResponse {
+  RoomConnectionInfo connection = 1;
+}
+
+// JoinRoomWithCode
+message JoinRoomWithCodeRequest {
+  string room_code = 1;
+}
+
+message JoinRoomWithCodeResponse {
   RoomConnectionInfo connection = 1;
 }
 

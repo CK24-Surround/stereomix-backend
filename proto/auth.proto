@@ -11,20 +11,26 @@ service AuthService {
   rpc ValidateUserToken(ValidateUserTokenRequest) returns (ValidateUserTokenResponse);
 }
 
+message UserAccount {
+  string user_id = 1;
+  string user_name = 2;
+}
+
 message GuestLoginRequest {
   string user_name = 1;
 }
 
 message LoginResponse {
-  string token = 2;
+  string access_token = 1;
+  string refresh_token = 2;
+  UserAccount user_account = 3;
 }
 
 message ValidateUserTokenRequest {
-  string token = 1;
+  string access_token = 1;
 }
 
 message ValidateUserTokenResponse {
   bool is_valid = 1;
-  string user_id = 2;
-  string user_name = 3;
+  UserAccount user_account = 2;
 }

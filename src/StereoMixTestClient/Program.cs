@@ -22,9 +22,9 @@ Console.WriteLine("Connected.");
 var authService = new AuthService.AuthServiceClient(channel);
 Console.WriteLine("Requesting token...");
 var loginResponse = await authService.GuestLoginAsync(new GuestLoginRequest { UserName = "TestUser" });
-Console.WriteLine("Token: " + loginResponse.Token);
+Console.WriteLine("Token: " + loginResponse.AccessToken);
 
-var headers = new Metadata { { "authorization", "Bearer " + loginResponse.Token } };
+var headers = new Metadata { { "authorization", "Bearer " + loginResponse.AccessToken } };
 
 var greeter = new GreeterService.GreeterServiceClient(channel);
 try

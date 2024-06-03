@@ -1,11 +1,15 @@
 using System.Diagnostics;
 using System.Net;
 using System.Security.Claims;
+
 using Edgegap;
 using Edgegap.Model;
+
 using Grpc.Core;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+
 using StereoMix.Lobby;
 using StereoMix.Security;
 using StereoMix.Storage;
@@ -19,9 +23,10 @@ public partial class LobbyService
     {
         var httpContext = context.GetHttpContext();
         var user = httpContext.User;
-        var _ = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User Id not found."));
+        var userId = user.FindFirstValue(StereoMixClaimTypes.UserId) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User Id not found."));
         var userName = user.FindFirstValue(StereoMixClaimTypes.UserName) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User name not found."));
         var requestIp = httpContext.Connection.RemoteIpAddress;
+        Logger.LogDebug("User {UserName}({UserId}) from {ip} is request {FunctionName}.", userName, userId, requestIp, nameof(CreateRoom));
 
         if (requestIp is null)
         {
@@ -126,7 +131,7 @@ public partial class LobbyService
             if (deploymentStatus is null)
             {
                 Logger.LogWarning("Deployment status is null. Deleting deployment.");
-                await Edgegap.DeleteDeploymentAsync(deploymentId, context.CancellationToken).ConfigureAwait(false);
+                await Edgegap.DeleteDeploymentAsync(deploymentId).ConfigureAwait(false);
             }
         }
 
@@ -219,31 +224,17 @@ public partial class LobbyService
     {
         var httpContext = context.GetHttpContext();
         var user = httpContext.User;
-        // var userId = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User Id not found."));
+        var userId = user.FindFirstValue(StereoMixClaimTypes.UserId) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User Id not found."));
         var userName = user.FindFirstValue(StereoMixClaimTypes.UserName) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User name not found."));
-        var requestIp = httpContext.Request.Host.Host;
-        Logger.LogDebug("User {User} from {ip} is request joining a room.", userName, requestIp);
+        var requestIp = httpContext.Connection.RemoteIpAddress;
+        Logger.LogDebug("User {UserName}({UserId}) from {ip} is request {FunctionName}.", userName, userId, requestIp, nameof(JoinRoom));
 
-        LobbyStorageData? roomData;
-        if (request.IdCase == JoinRoomRequest.IdOneofCase.RoomId)
+        if (!string.IsNullOrWhiteSpace(request.RoomId))
         {
-            if (!request.HasRoomId || string.IsNullOrWhiteSpace(request.RoomId))
-            {
-                throw new RpcException(new Status(StatusCode.InvalidArgument, "Room Id is invalid."));
-            }
-
-            roomData = await LobbyStorage.GetRoomAsync(request.RoomId, context.CancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            if (!request.HasShortRoomId || string.IsNullOrWhiteSpace(request.ShortRoomId))
-            {
-                throw new RpcException(new Status(StatusCode.InvalidArgument, "Short Room Id is invalid."));
-            }
-
-            roomData = await LobbyStorage.FindRoomByShortIdAsync(request.ShortRoomId, context.CancellationToken).ConfigureAwait(false);
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Room Id is invalid."));
         }
 
+        var roomData = await LobbyStorage.GetRoomAsync(request.RoomId, context.CancellationToken).ConfigureAwait(false);
         if (roomData is null)
         {
             throw new RpcException(new Status(StatusCode.NotFound, "Room not found."));
@@ -270,6 +261,48 @@ public partial class LobbyService
         }
 
         return new JoinRoomResponse
+        {
+            Connection = new RoomConnectionInfo
+            {
+                Host = connection.Ip,
+                Port = connection.Port
+            }
+        };
+    }
+
+    [Authorize(Policy = StereoMixPolicy.AuthorizeUserOnlyPolicy)]
+    public override async Task<JoinRoomWithCodeResponse> JoinRoomWithCode(JoinRoomWithCodeRequest request, ServerCallContext context)
+    {
+        var httpContext = context.GetHttpContext();
+        var user = httpContext.User;
+        var userId = user.FindFirstValue(StereoMixClaimTypes.UserId) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User Id not found."));
+        var userName = user.FindFirstValue(StereoMixClaimTypes.UserName) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User name not found."));
+        var requestIp = httpContext.Connection.RemoteIpAddress;
+        Logger.LogDebug("User {UserName}({UserId}) from {ip} is request {FunctionName}.", userName, userId, requestIp, nameof(JoinRoomWithCode));
+
+        if (string.IsNullOrWhiteSpace(request.RoomCode))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Short Room Id is invalid."));
+        }
+
+        var roomData = await LobbyStorage.FindRoomByShortIdAsync(request.RoomCode, context.CancellationToken).ConfigureAwait(false);
+        if (roomData is null)
+        {
+            throw new RpcException(new Status(StatusCode.NotFound, "Room not found."));
+        }
+
+        if (roomData.CurrentPlayers >= roomData.MaxPlayers)
+        {
+            throw new RpcException(new Status(StatusCode.Aborted, "Room is full."));
+        }
+
+        var connection = roomData.Connection;
+        if (connection is null)
+        {
+            throw new RpcException(new Status(StatusCode.Internal, "Room connection data not found."));
+        }
+
+        return new JoinRoomWithCodeResponse
         {
             Connection = new RoomConnectionInfo
             {
