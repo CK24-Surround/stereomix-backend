@@ -1,15 +1,11 @@
 using System.Diagnostics;
 using System.Net;
 using System.Security.Claims;
-
 using Edgegap;
 using Edgegap.Model;
-
 using Grpc.Core;
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-
 using StereoMix.Lobby;
 using StereoMix.Security;
 using StereoMix.Storage;
@@ -26,6 +22,7 @@ public partial class LobbyService
         var userId = user.FindFirstValue(StereoMixClaimTypes.UserId) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User Id not found."));
         var userName = user.FindFirstValue(StereoMixClaimTypes.UserName) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User name not found."));
         var requestIp = httpContext.Connection.RemoteIpAddress;
+
         Logger.LogDebug("User {UserName}({UserId}) from {ip} is request {FunctionName}.", userName, userId, requestIp, nameof(CreateRoom));
 
         if (requestIp is null)
@@ -215,6 +212,7 @@ public partial class LobbyService
                 Tags = ["CustomRoom"]
             };
 
+            Logger.LogInformation("Deployment created - {AppName} / {VersionName} / {RoomId} / {ShortRoomId}", createDeploymentRequest.AppName, createDeploymentRequest.VersionName, roomId, shortRoomId);
             return Edgegap.CreateDeploymentAsync(createDeploymentRequest, context.CancellationToken);
         }
     }
