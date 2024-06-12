@@ -21,21 +21,24 @@ public partial class LobbyService
         var user = httpContext.User;
         var userId = user.FindFirstValue(StereoMixClaimTypes.UserId) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User Id not found."));
         var userName = user.FindFirstValue(StereoMixClaimTypes.UserName) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User name not found."));
-        var requestIp = httpContext.Connection.RemoteIpAddress;
+
+        // TODO: 아이피를 제대로 가져오기 전까지 임시로 청강대 아이피 사용
+        // var requestIp = httpContext.Connection.RemoteIpAddress;
+        var requestIp = IPAddress.Parse("121.157.127.18");
 
         Logger.LogDebug("User {UserName}({UserId}) from {ip} is request {FunctionName}.", userName, userId, requestIp, nameof(CreateRoom));
 
-        if (requestIp is null)
-        {
-            Logger.LogWarning("Request IP not found. Set request ip to default.");
-            requestIp = IPAddress.Loopback;
-        }
+        // if (requestIp is null)
+        // {
+        //     Logger.LogWarning("Request IP not found. Set request ip to default.");
+        //     requestIp = IPAddress.Loopback;
+        // }
 
         // For Test
-        if (Equals(requestIp, IPAddress.Loopback))
-        {
-            requestIp = IPAddress.Parse("121.157.127.18"); // 청강대 아이피
-        }
+        // if (Equals(requestIp, IPAddress.Loopback))
+        // {
+        //     requestIp = IPAddress.Parse("121.157.127.18"); // 청강대 아이피
+        // }
 
         Logger.LogDebug("User {User} from {ip} is request creating a room.", userName, requestIp);
 
