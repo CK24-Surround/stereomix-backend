@@ -7,6 +7,7 @@ namespace StereoMix.Storage;
 public class LobbyStorageData
 {
     [FirestoreProperty("id")] public required string RoomId { get; init; }
+    [FirestoreProperty("game_version")] public required string GameVersion { get; set; }
     [FirestoreProperty("short_id")] public required string ShortId { get; init; }
     [FirestoreProperty("name")] public required string RoomName { get; init; }
     [FirestoreProperty("password")] public string? PasswordEncrypted { get; set; }

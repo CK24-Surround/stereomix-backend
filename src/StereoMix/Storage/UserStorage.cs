@@ -24,7 +24,7 @@ public class UserStorage(IFirestoreClient firestore) : Storage<UserStorageData>(
 
     public ValueTask<StorageResponse> UpdateUserAccountAsync(string userId, Action<UserStorageData> updateUserData, CancellationToken cancellationToken = default)
     {
-        return UpdateAsync(userId, updateUserData, cancellationToken);
+        return SetAsync(userId, updateUserData, cancellationToken);
     }
 
     public ValueTask<StorageResponse> DeleteUserAccountAsync(string userId, CancellationToken cancellationToken = default)

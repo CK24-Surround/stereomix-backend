@@ -61,18 +61,20 @@ message Room {
   string room_id = 1;
   string room_code = 2;
   string owner_id = 3;
-  RoomConfig config = 4;
-  RoomState state = 5;
-  int32 max_players = 6;
-  int32 current_players = 7;
-  RoomConnectionInfo connection = 8;
+  RoomConfig config = 5;
+  RoomState state = 6;
+  int32 max_players = 7;
+  int32 current_players = 8;
+  RoomConnectionInfo connection = 9;
+  string game_version = 10;
 }
 
 // CreateRoom
 message CreateRoomRequest {
-  string room_name = 1;
-  string password = 2;
-  RoomConfig config = 3;
+  string game_version = 1;
+  string room_name = 2;
+  string password = 3;
+  RoomConfig config = 4;
 }
 
 message CreateRoomResponse {
@@ -81,6 +83,7 @@ message CreateRoomResponse {
 
 // QuickMatch
 message QuickMatchRequest {
+  string game_version = 1;
 }
 
 message QuickMatchResponse {
@@ -89,8 +92,9 @@ message QuickMatchResponse {
 
 // JoinRoom
 message JoinRoomRequest {
-  string room_id = 1;
-  string password = 2;
+  string game_version = 1;
+  string room_id = 2;
+  string password = 3;
 }
 
 message JoinRoomResponse {
@@ -99,7 +103,8 @@ message JoinRoomResponse {
 
 // JoinRoomWithCode
 message JoinRoomWithCodeRequest {
-  string room_code = 1;
+  string game_version = 1;
+  string room_code = 2;
 }
 
 message JoinRoomWithCodeResponse {
@@ -108,7 +113,8 @@ message JoinRoomWithCodeResponse {
 
 // GetRoomList
 message GetRoomListRequest {
-  RoomVisibility visibility = 1;
+  string game_version = 1;
+  RoomVisibility visibility = 2;
   GameMode mode = 3;
   GameMap map = 4;
 }

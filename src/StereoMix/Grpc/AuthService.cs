@@ -6,11 +6,19 @@ using StereoMix.Storage;
 
 namespace StereoMix.Grpc;
 
-public class AuthService(
-    ILogger<AuthService> logger,
-    IUserStorage userStorage,
-    IJwtTokenProvider jwtTokenProvider) : Auth.AuthService.AuthServiceBase
+public class AuthService : Auth.AuthService.AuthServiceBase
 {
+    private readonly IJwtTokenProvider _jwtTokenProvider;
+    private readonly ILogger<AuthService> _logger;
+    private readonly IUserStorage _userStorage;
+
+    public AuthService(ILogger<AuthService> logger, IUserStorage userStorage, IJwtTokenProvider jwtTokenProvider)
+    {
+        _logger = logger;
+        _userStorage = userStorage;
+        _jwtTokenProvider = jwtTokenProvider;
+    }
+
     [AllowAnonymous]
     public override async Task<LoginResponse> GuestLogin(GuestLoginRequest request, ServerCallContext context)
     {
@@ -26,7 +34,7 @@ public class AuthService(
             UserName = userName
         };
 
-        var response = await userStorage.CreateUserAccountAsync(new UserStorageData
+        var response = await _userStorage.CreateUserAccountAsync(new UserStorageData
         {
             Id = userAccount.UserId,
             Name = userAccount.UserName
@@ -34,12 +42,12 @@ public class AuthService(
 
         if (response is not StorageResponse.Success)
         {
-            logger.LogError("Failed to create user account. {Response}", response);
+            _logger.LogError("Failed to create user account. {Response}", response);
             throw new RpcException(new Status(StatusCode.Internal, "Internal error while creating user account."));
         }
 
-        var token = jwtTokenProvider.AuthenticateUser(userAccount);
-        logger.LogDebug("New token generated for user {UserId}", userAccount.UserId);
+        var token = _jwtTokenProvider.AuthenticateUser(userAccount);
+        _logger.LogDebug("New token generated for user {UserId}", userAccount.UserId);
         return new LoginResponse { AccessToken = token, UserAccount = userAccount };
     }
 
@@ -51,18 +59,18 @@ public class AuthService(
             throw new RpcException(new Status(StatusCode.InvalidArgument, "Token cannot be empty."));
         }
 
-        var validateResult = await jwtTokenProvider.ValidateTokenAsync(request.AccessToken).ConfigureAwait(false);
+        var validateResult = await _jwtTokenProvider.ValidateTokenAsync(request.AccessToken).ConfigureAwait(false);
         if (validateResult.IsValid)
         {
             var userIdClaim = validateResult.ClaimsIdentity.FindFirst(StereoMixClaimTypes.UserId);
             var userNameClaim = validateResult.ClaimsIdentity.FindFirst(StereoMixClaimTypes.UserName);
             if (userIdClaim is null || userNameClaim is null)
             {
-                logger.LogDebug("Token validation passed but it does not contain user information. {Token}", request.AccessToken);
+                _logger.LogDebug("Token validation passed but it does not contain user information. {Token}", request.AccessToken);
                 throw new RpcException(new Status(StatusCode.InvalidArgument, "Token does not contain user information."));
             }
 
-            logger.LogDebug("Token validation passed. {Token}", request.AccessToken);
+            _logger.LogDebug("Token validation passed. {Token}", request.AccessToken);
             return new ValidateUserTokenResponse
             {
                 IsValid = true,
@@ -70,7 +78,7 @@ public class AuthService(
             };
         }
 
-        logger.LogDebug("Token validation failed. {Token}, Exception: {Exception}", request.AccessToken, validateResult.Exception.Message);
+        _logger.LogDebug("Token validation failed. {Token}, Exception: {Exception}", request.AccessToken, validateResult.Exception.Message);
         return new ValidateUserTokenResponse { IsValid = false };
     }
 }

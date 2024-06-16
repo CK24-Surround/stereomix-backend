@@ -7,24 +7,12 @@ public abstract class Storage<T>(IFirestoreClient firestore, string collectionNa
 {
     protected CollectionReference Collection => firestore.Database.Collection(collectionName);
 
-    protected async ValueTask<StorageResponse> CreateAsync(string documentId, T documentData, CancellationToken cancellationToken = default)
+    protected async ValueTask<StorageResponse> CreateAsync(string? documentId, T documentData, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(documentId);
         ArgumentNullException.ThrowIfNull(documentData);
-
-
-        return await firestore.Database.RunTransactionAsync(async transaction =>
-        {
-            var documentRef = Collection.Document(documentId);
-            var snapshot = await transaction.GetSnapshotAsync(documentRef, cancellationToken).ConfigureAwait(false);
-            if (snapshot.Exists)
-            {
-                return StorageResponse.AlreadyExists;
-            }
-
-            transaction.Create(documentRef, documentData);
-            return StorageResponse.Success;
-        }, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var documentRef = Collection.Document(documentId);
+        var writeResult = await documentRef.CreateAsync(documentData, cancellationToken).ConfigureAwait(false);
+        return StorageResponse.Success;
     }
 
     protected async ValueTask<T?> GetAsync(string documentId, CancellationToken cancellationToken = default)
@@ -37,10 +25,10 @@ public abstract class Storage<T>(IFirestoreClient firestore, string collectionNa
         return !snapshot.Exists ? null : snapshot.ConvertTo<T>();
     }
 
-    protected async ValueTask<StorageResponse> UpdateAsync(string documentId, Action<T> updateDocumentObject, CancellationToken cancellationToken = default)
+    protected async ValueTask<StorageResponse> SetAsync(string documentId, Action<T> setDocumentObject, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(documentId);
-        ArgumentNullException.ThrowIfNull(updateDocumentObject);
+        ArgumentNullException.ThrowIfNull(setDocumentObject);
 
         return await firestore.Database.RunTransactionAsync(async transaction =>
         {
@@ -52,7 +40,7 @@ public abstract class Storage<T>(IFirestoreClient firestore, string collectionNa
             }
 
             var documentObject = snapshot.ConvertTo<T>();
-            updateDocumentObject(documentObject);
+            setDocumentObject(documentObject);
             transaction.Set(documentRef, documentObject, SetOptions.MergeAll);
             return StorageResponse.Success;
         }, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -82,5 +70,13 @@ public abstract class Storage<T>(IFirestoreClient firestore, string collectionNa
 
         var querySnapshot = await query.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
         return querySnapshot.Count == 0 ? null : querySnapshot.FirstOrDefault(predicate)?.ConvertTo<T>();
+    }
+
+    protected async ValueTask<IReadOnlyCollection<T>> FindAllAsync(Query query, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        var querySnapshot = await query.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
+        return querySnapshot.Documents.Select(doc => doc.ConvertTo<T>()).ToList();
     }
 }

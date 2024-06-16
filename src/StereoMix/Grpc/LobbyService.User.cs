@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Net;
 using System.Security.Claims;
 using Edgegap;
 using Edgegap.Model;
@@ -21,30 +20,11 @@ public partial class LobbyService
         var user = httpContext.User;
         var userId = user.FindFirstValue(StereoMixClaimTypes.UserId) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User Id not found."));
         var userName = user.FindFirstValue(StereoMixClaimTypes.UserName) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User name not found."));
-
-        // TODO: 아이피를 제대로 가져오기 전까지 임시로 청강대 아이피 사용
-        // var requestIp = httpContext.Connection.RemoteIpAddress;
-        var requestIp = IPAddress.Parse("121.157.127.18");
-
-        Logger.LogDebug("User {UserName}({UserId}) from {ip} is request {FunctionName}.", userName, userId, requestIp, nameof(CreateRoom));
-
-        // if (requestIp is null)
-        // {
-        //     Logger.LogWarning("Request IP not found. Set request ip to default.");
-        //     requestIp = IPAddress.Loopback;
-        // }
-
-        // For Test
-        // if (Equals(requestIp, IPAddress.Loopback))
-        // {
-        //     requestIp = IPAddress.Parse("121.157.127.18"); // 청강대 아이피
-        // }
-
-        Logger.LogDebug("User {User} from {ip} is request creating a room.", userName, requestIp);
+        Logger.LogDebug("User {User}({UserId}) is request creating a room.", userName, userId);
 
         if (string.IsNullOrWhiteSpace(request.RoomName))
         {
-            throw new RpcException(new Status(StatusCode.InvalidArgument, "Room name cannot be empty."));
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Room name is empty."));
         }
 
         if (request.RoomName.Length > 32)
@@ -52,20 +32,22 @@ public partial class LobbyService
             throw new RpcException(new Status(StatusCode.InvalidArgument, "Room name is too long."));
         }
 
+        if (string.IsNullOrWhiteSpace(request.GameVersion))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Game version is empty."));
+        }
+
         var roomId = IdGenerator.GenerateRoomId();
         var shortRoomId = IdGenerator.GenerateShortRoomId();
         var gameServerAuthToken = JwtTokenProvider.AuthenticateGameServer(roomId);
 
-        string deploymentId;
-
+        EdgegapCreateDeploymentResponse? createDeploymentResponse;
         try
         {
-            var response = await CreateDeploymentAsync().ConfigureAwait(false);
-            Logger.LogDebug(
+            createDeploymentResponse = await CreateDeploymentAsync(context, request.GameVersion, gameServerAuthToken, roomId, shortRoomId).ConfigureAwait(false);
+            Logger.LogInformation(
                 "Deployment creating: RequestId={RequestId}, AppVersion={AppVersion}, Location={City}, {Country}, {Continent}",
-                response.RequestId, response.RequestVersion, response.City, response.Country, response.Continent);
-
-            deploymentId = response.RequestId;
+                createDeploymentResponse.RequestId, createDeploymentResponse.RequestVersion, createDeploymentResponse.City, createDeploymentResponse.Country, createDeploymentResponse.Continent);
         }
         catch (TaskCanceledException)
         {
@@ -75,7 +57,7 @@ public partial class LobbyService
         catch (EdgegapException e)
         {
             Logger.LogError("Failed to create deployment. {Error}", e.ToString());
-            if (e.Response.Errors == null)
+            if (e.Response.Errors is null)
             {
                 throw new RpcException(new Status(StatusCode.Internal, "Failed to create deployment."));
             }
@@ -88,10 +70,11 @@ public partial class LobbyService
             throw new RpcException(new Status(StatusCode.Internal, "Failed to create deployment."));
         }
 
+        var deploymentId = createDeploymentResponse.RequestId;
+
         EdgegapDeploymentStatus? deploymentStatus = null;
         try
         {
-            // repeat until deployment is ready
             var retryCount = 50;
 
             while (retryCount > 0)
@@ -103,6 +86,12 @@ public partial class LobbyService
                 {
                     deploymentStatus = response;
                     break;
+                }
+
+                if (response.CurrentStatus is EdgegapDeploymentStatusType.Error)
+                {
+                    Logger.LogError("Deployment status is error.");
+                    throw new RpcException(new Status(StatusCode.Internal, "Deployment status is error."));
                 }
 
                 await Task.Delay(2000, context.CancellationToken).ConfigureAwait(false);
@@ -146,6 +135,7 @@ public partial class LobbyService
         var roomData = new LobbyStorageData
         {
             RoomId = roomId,
+            GameVersion = deploymentStatus.AppVersion,
             ShortId = shortRoomId,
             RoomName = request.RoomName,
             PasswordEncrypted = request.Config.Visibility == RoomVisibility.Private ? RoomEncryptor.HashPassword(roomId, request.Password) : string.Empty,
@@ -167,6 +157,7 @@ public partial class LobbyService
         var storageResponse = await LobbyStorage.CreateRoomAsync(roomData, context.CancellationToken).ConfigureAwait(false);
         if (storageResponse is StorageResponse.Success)
         {
+            Logger.LogInformation("Room created - {RoomId} / {RoomName} / {ShortRoomId}", roomId, request.RoomName, shortRoomId);
             return new CreateRoomResponse { Connection = roomConnection };
         }
 
@@ -174,50 +165,52 @@ public partial class LobbyService
 
         await Edgegap.DeleteDeploymentAsync(deploymentId, context.CancellationToken).ConfigureAwait(false);
         throw new RpcException(new Status(StatusCode.Internal, "Failed to create room."));
+    }
 
-        Task<EdgegapCreateDeploymentResponse> CreateDeploymentAsync()
+    private async Task<EdgegapCreateDeploymentResponse> CreateDeploymentAsync(ServerCallContext context, string gameVersion, string gameServerAuthToken, string roomId, string shortRoomId)
+    {
+        var createDeploymentRequest = new EdgegapCreateDeploymentRequest
         {
-            var createDeploymentRequest = new EdgegapCreateDeploymentRequest
-            {
-                AppName = Edgegap.Config.AppName,
-                // VersionName = Edgegap.Config.AppVersion,
-                EnvVars =
-                [
-                    new EdgegapDeployEnvironment
-                    {
-                        Key = "STEREOMIX_AUTH_TOKEN",
-                        Value = gameServerAuthToken,
-                        IsHidden = true
-                    },
-                    new EdgegapDeployEnvironment
-                    {
-                        Key = "STEREOMIX_ROOM_ID",
-                        Value = roomId,
-                        IsHidden = false
-                    },
-                    new EdgegapDeployEnvironment
-                    {
-                        Key = "STEREOMIX_SHORT_ROOM_ID",
-                        Value = shortRoomId,
-                        IsHidden = false
-                    }
-                ],
-                Filters =
-                [
-                    new EdgegapDeploymentFilter
-                    {
-                        Field = EdgegapDeploymentFilterFieldType.Country,
-                        FilterType = EdgegapDeploymentFilterType.Any,
-                        Values = ["South Korea", "Japan"]
-                    }
-                ],
-                IpList = [requestIp.ToString()],
-                Tags = ["CustomRoom"]
-            };
+            AppName = Edgegap.Config.AppName,
+            IpList = ["121.157.127.18"], // 임시로 청강대 아이피 사용
+            VersionName = gameVersion,
+            EnvVars =
+            [
+                new EdgegapDeployEnvironment
+                {
+                    Key = "STEREOMIX_AUTH_TOKEN",
+                    Value = gameServerAuthToken,
+                    IsHidden = true
+                },
+                new EdgegapDeployEnvironment
+                {
+                    Key = "STEREOMIX_ROOM_ID",
+                    Value = roomId,
+                    IsHidden = false
+                },
+                new EdgegapDeployEnvironment
+                {
+                    Key = "STEREOMIX_SHORT_ROOM_ID",
+                    Value = shortRoomId,
+                    IsHidden = false
+                }
+            ],
+            Filters =
+            [
+                new EdgegapDeploymentFilter
+                {
+                    Field = EdgegapDeploymentFilterFieldType.Country,
+                    FilterType = EdgegapDeploymentFilterType.Any,
+                    Values = ["South Korea", "Japan"] // 한국 리전이 사용 불가능할 경우에 대비하여 일본 리전도 포함
+                }
+            ],
+            Tags = ["CustomRoom"]
+        };
 
-            Logger.LogInformation("Deployment created - {AppName} / {VersionName} / {RoomId} / {ShortRoomId}", createDeploymentRequest.AppName, createDeploymentRequest.VersionName, roomId, shortRoomId);
-            return Edgegap.CreateDeploymentAsync(createDeploymentRequest, context.CancellationToken);
-        }
+        var response = await Edgegap.CreateDeploymentAsync(createDeploymentRequest, context.CancellationToken).ConfigureAwait(false);
+        Logger.LogInformation("Deployment created - {AppName} / {VersionName} / {RoomId} / {ShortRoomId}", createDeploymentRequest.AppName, createDeploymentRequest.VersionName, roomId, shortRoomId);
+
+        return response;
     }
 
     [Authorize(Policy = StereoMixPolicy.AuthorizeUserOnlyPolicy)]
@@ -227,18 +220,27 @@ public partial class LobbyService
         var user = httpContext.User;
         var userId = user.FindFirstValue(StereoMixClaimTypes.UserId) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User Id not found."));
         var userName = user.FindFirstValue(StereoMixClaimTypes.UserName) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User name not found."));
-        var requestIp = httpContext.Connection.RemoteIpAddress;
-        Logger.LogDebug("User {UserName}({UserId}) from {ip} is request {FunctionName}.", userName, userId, requestIp, nameof(JoinRoom));
+        Logger.LogDebug("User {UserName}({UserId}) is request {FunctionName}.", userName, userId, nameof(JoinRoom));
 
-        if (!string.IsNullOrWhiteSpace(request.RoomId))
+        if (string.IsNullOrWhiteSpace(request.RoomId))
         {
             throw new RpcException(new Status(StatusCode.InvalidArgument, "Room Id is invalid."));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.GameVersion))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Game version is invalid."));
         }
 
         var roomData = await LobbyStorage.GetRoomAsync(request.RoomId, context.CancellationToken).ConfigureAwait(false);
         if (roomData is null)
         {
             throw new RpcException(new Status(StatusCode.NotFound, "Room not found."));
+        }
+
+        if (roomData.GameVersion != request.GameVersion)
+        {
+            throw new RpcException(new Status(StatusCode.NotFound, "Game version mismatched."));
         }
 
         if (roomData.Visibility == RoomVisibility.Private)
@@ -261,6 +263,8 @@ public partial class LobbyService
             throw new RpcException(new Status(StatusCode.Internal, "Room connection data not found."));
         }
 
+        Logger.LogInformation("User {UserName}({UserId}) joined room {RoomId}.", userName, userId, request.RoomId);
+
         return new JoinRoomResponse
         {
             Connection = new RoomConnectionInfo
@@ -278,15 +282,19 @@ public partial class LobbyService
         var user = httpContext.User;
         var userId = user.FindFirstValue(StereoMixClaimTypes.UserId) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User Id not found."));
         var userName = user.FindFirstValue(StereoMixClaimTypes.UserName) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User name not found."));
-        var requestIp = httpContext.Connection.RemoteIpAddress;
-        Logger.LogDebug("User {UserName}({UserId}) from {ip} is request {FunctionName}.", userName, userId, requestIp, nameof(JoinRoomWithCode));
+        Logger.LogDebug("User {UserName}({UserId}) is request {FunctionName}.", userName, userId, nameof(JoinRoomWithCode));
 
         if (string.IsNullOrWhiteSpace(request.RoomCode))
         {
             throw new RpcException(new Status(StatusCode.InvalidArgument, "Short Room Id is invalid."));
         }
 
-        var roomData = await LobbyStorage.FindRoomByShortIdAsync(request.RoomCode, context.CancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(request.GameVersion))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Game version is invalid."));
+        }
+
+        var roomData = await LobbyStorage.FindRoomByShortIdAsync(request.GameVersion, request.RoomCode, context.CancellationToken).ConfigureAwait(false);
         if (roomData is null)
         {
             throw new RpcException(new Status(StatusCode.NotFound, "Room not found."));
@@ -303,6 +311,8 @@ public partial class LobbyService
             throw new RpcException(new Status(StatusCode.Internal, "Room connection data not found."));
         }
 
+        Logger.LogInformation("User {UserName}({UserId}) joined room {RoomId}.", userName, userId, roomData.RoomId);
+
         return new JoinRoomWithCodeResponse
         {
             Connection = new RoomConnectionInfo
@@ -311,5 +321,83 @@ public partial class LobbyService
                 Port = connection.Port
             }
         };
+    }
+
+    [Authorize(Policy = StereoMixPolicy.AuthorizeUserOnlyPolicy)]
+    public override async Task<QuickMatchResponse> QuickMatch(QuickMatchRequest request, ServerCallContext context)
+    {
+        var httpContext = context.GetHttpContext();
+        var user = httpContext.User;
+        var userId = user.FindFirstValue(StereoMixClaimTypes.UserId) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User Id not found."));
+        var userName = user.FindFirstValue(StereoMixClaimTypes.UserName) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User name not found."));
+        Logger.LogDebug("User {UserName}({UserId}) is request {FunctionName}.", userName, userId, nameof(QuickMatch));
+
+        if (string.IsNullOrWhiteSpace(request.GameVersion))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Game version is invalid."));
+        }
+
+        var activeRooms = await LobbyStorage.GetRoomsAsync(request.GameVersion, GameMode.Unspecified, GameMap.Unspecified, context.CancellationToken).ConfigureAwait(false);
+        var room = activeRooms.FirstOrDefault(r => r is { Visibility: RoomVisibility.Public, State: RoomState.Open } && r.CurrentPlayers < r.MaxPlayers);
+        if (room?.Connection is null)
+        {
+            throw new RpcException(new Status(StatusCode.NotFound, "Room not found."));
+        }
+
+        var response = new QuickMatchResponse
+        {
+            Connection = new RoomConnectionInfo
+            {
+                Host = room.Connection.Ip,
+                Port = room.Connection.Port
+            }
+        };
+        return response;
+    }
+
+    [Authorize(Policy = StereoMixPolicy.AuthorizeUserOnlyPolicy)]
+    public override async Task<GetRoomListResponse> GetRoomList(GetRoomListRequest request, ServerCallContext context)
+    {
+        var httpContext = context.GetHttpContext();
+        var user = httpContext.User;
+        var userId = user.FindFirstValue(StereoMixClaimTypes.UserId) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User Id not found."));
+        var userName = user.FindFirstValue(StereoMixClaimTypes.UserName) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User name not found."));
+        Logger.LogDebug("User {UserName}({UserId}) is request {FunctionName}.", userName, userId, nameof(GetRoomList));
+
+        if (string.IsNullOrWhiteSpace(request.GameVersion))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Game version is invalid."));
+        }
+
+        var activeRooms = await LobbyStorage.GetRoomsAsync(request.GameVersion, request.Mode, request.Map, context.CancellationToken).ConfigureAwait(false);
+        var response = new GetRoomListResponse();
+        foreach (var room in activeRooms)
+        {
+            var roomInfo = new Room
+            {
+                RoomId = room.RoomId,
+                RoomCode = room.ShortId,
+                OwnerId = room.OwnerId,
+                Config = new RoomConfig
+                {
+                    RoomName = room.RoomName,
+                    Visibility = room.Visibility,
+                    Mode = room.Mode,
+                    Map = room.Map
+                },
+                State = room.State,
+                MaxPlayers = room.MaxPlayers,
+                CurrentPlayers = room.CurrentPlayers,
+                GameVersion = room.GameVersion
+            };
+            if (room.Connection is not null)
+            {
+                roomInfo.Connection = new RoomConnectionInfo { Host = room.Connection.Ip, Port = room.Connection.Port };
+            }
+
+            response.Rooms.Add(roomInfo);
+        }
+
+        return response;
     }
 }

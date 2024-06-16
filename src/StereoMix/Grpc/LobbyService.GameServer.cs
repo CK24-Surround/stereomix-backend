@@ -24,7 +24,7 @@ public partial class LobbyService
             throw new RpcException(new Status(StatusCode.InvalidArgument, "State is required"));
         }
 
-        var updateResponse = await LobbyStorage.UpdateRoomAsync(requestRoomId, data => data.State = request.State, context.CancellationToken).ConfigureAwait(false);
+        var updateResponse = await LobbyStorage.SetRoomAsync(requestRoomId, data => data.State = request.State, context.CancellationToken).ConfigureAwait(false);
         if (updateResponse == StorageResponse.NotFound)
         {
             throw new RpcException(new Status(StatusCode.NotFound, "Room not found"));
@@ -49,7 +49,7 @@ public partial class LobbyService
             throw new RpcException(new Status(StatusCode.InvalidArgument, "NewOwnerId is required"));
         }
 
-        var updateResponse = await LobbyStorage.UpdateRoomAsync(requestRoomId, data => data.OwnerId = request.NewOwnerId, context.CancellationToken).ConfigureAwait(false);
+        var updateResponse = await LobbyStorage.SetRoomAsync(requestRoomId, data => data.OwnerId = request.NewOwnerId, context.CancellationToken).ConfigureAwait(false);
         if (updateResponse == StorageResponse.NotFound)
         {
             throw new RpcException(new Status(StatusCode.NotFound, "Room not found"));
@@ -70,7 +70,7 @@ public partial class LobbyService
         }
 
         string? deploymentId = null;
-        var storageResponse = await LobbyStorage.UpdateRoomAsync(requestRoomId, data =>
+        var storageResponse = await LobbyStorage.SetRoomAsync(requestRoomId, data =>
         {
             deploymentId = data.DeploymentId;
             data.State = RoomState.Closed;
