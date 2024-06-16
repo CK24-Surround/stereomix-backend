@@ -300,6 +300,11 @@ public partial class LobbyService
             throw new RpcException(new Status(StatusCode.NotFound, "Room not found."));
         }
 
+        if (roomData.GameVersion != request.GameVersion)
+        {
+            throw new RpcException(new Status(StatusCode.NotFound, "Game version mismatched."));
+        }
+
         if (roomData.CurrentPlayers >= roomData.MaxPlayers)
         {
             throw new RpcException(new Status(StatusCode.Aborted, "Room is full."));
