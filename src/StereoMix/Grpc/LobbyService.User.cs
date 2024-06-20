@@ -188,9 +188,15 @@ public partial class LobbyService
                     Value = roomId,
                     IsHidden = false
                 },
-                new EdgegapDeployEnvironment
+                new EdgegapDeployEnvironment // Obsolete
                 {
                     Key = "STEREOMIX_SHORT_ROOM_ID",
+                    Value = shortRoomId,
+                    IsHidden = false
+                },
+                new EdgegapDeployEnvironment
+                {
+                    Key = "STEREOMIX_ROOM_CODE",
                     Value = shortRoomId,
                     IsHidden = false
                 }
