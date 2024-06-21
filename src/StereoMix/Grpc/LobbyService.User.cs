@@ -213,7 +213,7 @@ public partial class LobbyService
                     Values = ["South Korea", "Japan"] // 한국 리전이 사용 불가능할 경우에 대비하여 일본 리전도 포함
                 }
             ],
-            Tags = ["CustomRoom"]
+            Tags = ["CustomRoom", shortRoomId]
         };
 
         var response = await Edgegap.CreateDeploymentAsync(createDeploymentRequest, context.CancellationToken).ConfigureAwait(false);
