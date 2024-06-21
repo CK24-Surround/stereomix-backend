@@ -10,7 +10,6 @@ public interface ILobbyStorage
     ValueTask<LobbyStorageData?> FindRoomByShortIdAsync(string gameVersion, string shortRoomId, CancellationToken cancellationToken = default);
     ValueTask<IReadOnlyCollection<LobbyStorageData>> GetRoomsAsync(string gameVersion, GameMode mode, GameMap map, CancellationToken cancellationToken = default);
     ValueTask<StorageResponse> SetRoomAsync(string roomId, Action<LobbyStorageData> setRoomData, CancellationToken cancellationToken = default);
-    ValueTask<StorageResponse> CloseRoomAsync(string roomId, CancellationToken cancellationToken = default);
 }
 
 public class LobbyStorage(IFirestoreClient firestore) : Storage<LobbyStorageData>(firestore, "rooms"), ILobbyStorage
@@ -55,10 +54,5 @@ public class LobbyStorage(IFirestoreClient firestore) : Storage<LobbyStorageData
     public ValueTask<StorageResponse> SetRoomAsync(string roomId, Action<LobbyStorageData> setRoomData, CancellationToken cancellationToken = default)
     {
         return SetAsync(roomId, setRoomData, cancellationToken);
-    }
-
-    public ValueTask<StorageResponse> CloseRoomAsync(string roomId, CancellationToken cancellationToken = default)
-    {
-        return DeleteAsync(roomId, cancellationToken);
     }
 }
