@@ -6,9 +6,11 @@ namespace StereoMix.Discord;
 public class DiscordMatchNotify : IDisposable
 {
     private const string WebhookUrlEnvironment = "DISCORD_WEBHOOK_URL";
-    private readonly DiscordWebhookClient? _client;
+    private const string DiscordNotifyTargetVersionEnvironment = "DISCORD_NOTIFY_TARGET_VERSION";
 
+    private readonly DiscordWebhookClient? _client;
     private readonly ILogger<DiscordMatchNotify> _logger;
+    private readonly string _targetVersion;
 
     public DiscordMatchNotify(ILogger<DiscordMatchNotify> logger, IConfiguration configuration)
     {
@@ -16,6 +18,18 @@ public class DiscordMatchNotify : IDisposable
 
         var webhookUrl = configuration[WebhookUrlEnvironment];
         _client = webhookUrl is not null ? new DiscordWebhookClient(webhookUrl) : null;
+
+        _targetVersion = configuration[DiscordNotifyTargetVersionEnvironment] ?? string.Empty;
+
+        if (_client is null)
+        {
+            _logger.LogWarning("Discord Webhook URL is not set. Discord notification will be skipped.");
+        }
+        else
+        {
+            _logger.LogInformation("Discord Webhook URL: {WebhookUrl}", webhookUrl);
+            _logger.LogInformation("Discord Notify Target Version: {TargetVersion}", _targetVersion);
+        }
     }
 
     public void Dispose()
@@ -29,6 +43,12 @@ public class DiscordMatchNotify : IDisposable
         if (_client is null)
         {
             _logger.LogWarning("Discord Webhook URL is not set. Skipping Discord notification.");
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_targetVersion) && gameVersion != _targetVersion)
+        {
+            _logger.LogInformation("Discord notification skipped. (NotifyRoomCreated) Target version: {TargetVersion}, Current version: {CurrentVersion}", _targetVersion, gameVersion);
             return;
         }
 
@@ -51,6 +71,12 @@ public class DiscordMatchNotify : IDisposable
             return;
         }
 
+        if (!string.IsNullOrWhiteSpace(_targetVersion) && gameVersion != _targetVersion)
+        {
+            _logger.LogInformation("Discord notification skipped. (NotifyRoomCreated) Target version: {TargetVersion}, Current version: {CurrentVersion}", _targetVersion, gameVersion);
+            return;
+        }
+
         var embed = new EmbedBuilder()
             .WithTitle($"'{userName}'님이 방에 입장했습니다.")
             .WithCurrentTimestamp()
@@ -68,6 +94,12 @@ public class DiscordMatchNotify : IDisposable
         if (_client is null)
         {
             _logger.LogWarning("Discord Webhook URL is not set. Skipping Discord notification.");
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_targetVersion) && gameVersion != _targetVersion)
+        {
+            _logger.LogInformation("Discord notification skipped. (NotifyRoomCreated) Target version: {TargetVersion}, Current version: {CurrentVersion}", _targetVersion, gameVersion);
             return;
         }
 
