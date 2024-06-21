@@ -155,16 +155,19 @@ public partial class LobbyService
         };
 
         var storageResponse = await LobbyStorage.CreateRoomAsync(roomData, context.CancellationToken).ConfigureAwait(false);
-        if (storageResponse is StorageResponse.Success)
+        if (storageResponse is not StorageResponse.Success)
         {
-            Logger.LogInformation("Room created - {RoomId} / {RoomName} / {ShortRoomId}", roomId, request.RoomName, shortRoomId);
-            return new CreateRoomResponse { Connection = roomConnection };
+            Logger.LogError("Failed to save room data to db. ({Response})", storageResponse);
+
+            await Edgegap.DeleteDeploymentAsync(deploymentId, context.CancellationToken).ConfigureAwait(false);
+            throw new RpcException(new Status(StatusCode.Internal, "Failed to create room."));
         }
 
-        Logger.LogError("Failed to save room data to db. ({Response})", storageResponse);
+        Logger.LogInformation("Room created - {RoomId} / {RoomName} / {ShortRoomId}", roomId, request.RoomName, shortRoomId);
 
-        await Edgegap.DeleteDeploymentAsync(deploymentId, context.CancellationToken).ConfigureAwait(false);
-        throw new RpcException(new Status(StatusCode.Internal, "Failed to create room."));
+        _ = DiscordMatchNotifyService.NotifyRoomCreated(userName, deploymentStatus.AppVersion, shortRoomId);
+
+        return new CreateRoomResponse { Connection = roomConnection };
     }
 
     private async Task<EdgegapCreateDeploymentResponse> CreateDeploymentAsync(ServerCallContext context, string gameVersion, string gameServerAuthToken, string roomId, string shortRoomId)
@@ -271,6 +274,8 @@ public partial class LobbyService
 
         Logger.LogInformation("User {UserName}({UserId}) joined room {RoomId}.", userName, userId, request.RoomId);
 
+        _ = DiscordMatchNotifyService.NotifyRoomEntered(userName, roomData.GameVersion, roomData.RoomName, roomData.ShortId);
+
         return new JoinRoomResponse
         {
             Connection = new RoomConnectionInfo
@@ -324,6 +329,8 @@ public partial class LobbyService
 
         Logger.LogInformation("User {UserName}({UserId}) joined room {RoomId}.", userName, userId, roomData.RoomId);
 
+        _ = DiscordMatchNotifyService.NotifyRoomEntered(userName, roomData.GameVersion, roomData.RoomName, roomData.ShortId);
+
         return new JoinRoomWithCodeResponse
         {
             Connection = new RoomConnectionInfo
@@ -363,6 +370,9 @@ public partial class LobbyService
                 Port = room.Connection.Port
             }
         };
+
+        _ = DiscordMatchNotifyService.NotifyRoomEntered(userName, room.GameVersion, room.RoomName, room.ShortId);
+
         return response;
     }
 
