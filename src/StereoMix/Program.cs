@@ -1,15 +1,13 @@
 using System.Net;
 using System.Text;
-
 using Edgegap;
-
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
-
 using StereoMix;
+using StereoMix.Discord;
 using StereoMix.Firestore;
 using StereoMix.Grpc;
 using StereoMix.Security;
@@ -76,8 +74,8 @@ services.AddSingleton<IFirestoreClient, FirestoreClient>();
 services.AddSingleton<IRoomEncryptor, RoomEncryptor>();
 services.AddSingleton<IUserStorage, UserStorage>();
 services.AddSingleton<ILobbyStorage, LobbyStorage>();
+services.AddSingleton<DiscordMatchNotify>();
 services.AddHttpClient<IEdgegapClient, EdgegapClient>().ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
-
 var app = builder.Build();
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions
