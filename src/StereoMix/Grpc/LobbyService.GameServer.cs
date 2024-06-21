@@ -14,6 +14,8 @@ public partial class LobbyService
         var requestUser = context.GetHttpContext().User;
         var requestRoomId = requestUser.FindFirst(StereoMixClaimTypes.RoomId)?.Value ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "RoomId is required"));
 
+        Logger.LogInformation("Room {RoomId} is updating state to {State}", requestRoomId, request.State);
+
         if (string.IsNullOrWhiteSpace(requestRoomId))
         {
             throw new RpcException(new Status(StatusCode.InvalidArgument, "RoomId is required"));
@@ -30,6 +32,7 @@ public partial class LobbyService
             throw new RpcException(new Status(StatusCode.NotFound, "Room not found"));
         }
 
+        Logger.LogInformation("Successfully updated room {RoomId} state to {State}", requestRoomId, request.State);
         return new UpdateRoomStateResponse { UpdatedState = request.State };
     }
 
