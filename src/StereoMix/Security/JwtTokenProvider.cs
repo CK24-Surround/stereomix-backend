@@ -87,9 +87,9 @@ public class JwtTokenProvider : IJwtTokenProvider
             SigningCredentials = _credentials,
             Expires = DateTime.UtcNow.AddMinutes(360)
         };
-        _logger.LogDebug(
-            "TokenDescriptor Information:\n\tIssuer: {Issuer}\n\tAudience: {Audience}\n\tSubject: {Subject}\n\tSigningCredentials: {SigningCredentials}\n\tExpires: {Expires}",
-            tokenDescriptor.Issuer, tokenDescriptor.Audience, tokenDescriptor.Subject, tokenDescriptor.SigningCredentials, tokenDescriptor.Expires);
+        // _logger.LogDebug(
+        //     "TokenDescriptor Information:\n\tIssuer: {Issuer}\n\tAudience: {Audience}\n\tSubject: {Subject}\n\tSigningCredentials: {SigningCredentials}\n\tExpires: {Expires}",
+        //     tokenDescriptor.Issuer, tokenDescriptor.Audience, tokenDescriptor.Subject, tokenDescriptor.SigningCredentials, tokenDescriptor.Expires);
 
         var token = tokenHandler.CreateToken(tokenDescriptor);
         return tokenHandler.WriteToken(token);

@@ -47,7 +47,7 @@ public class AuthService : Auth.AuthService.AuthServiceBase
         }
 
         var token = _jwtTokenProvider.AuthenticateUser(userAccount);
-        _logger.LogDebug("New token generated for user {UserId}", userAccount.UserId);
+        _logger.LogDebug("New access token generated for user {UserName}({UserId})", userName, userAccount.UserId);
         return new LoginResponse { AccessToken = token, UserAccount = userAccount };
     }
 
