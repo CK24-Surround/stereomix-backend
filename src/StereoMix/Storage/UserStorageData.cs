@@ -5,8 +5,8 @@ namespace StereoMix.Storage;
 [FirestoreData]
 public class UserStorageData
 {
-    [FirestoreProperty] public required string Id { get; init; }
-    [FirestoreProperty] public required string Name { get; init; }
+    [FirestoreProperty("id")]  public required string Id { get; init; }
+    [FirestoreProperty("name")] public required string Name { get; init; }
 
     public override string ToString()
     {
