@@ -138,20 +138,14 @@ public partial class LobbyService
             GameVersion = deploymentStatus.AppVersion,
             ShortId = shortRoomId,
             RoomName = request.RoomName,
-            PasswordEncrypted = request.Config.Visibility == RoomVisibility.Private ? RoomEncryptor.HashPassword(roomId, request.Password) : string.Empty,
-            Visibility = request.Config.Visibility != RoomVisibility.Unspecified ? request.Config.Visibility : RoomVisibility.Public,
-            Mode = request.Config.Mode != GameMode.Unspecified ? request.Config.Mode : GameMode.Default,
-            Map = request.Config.Map != GameMap.Unspecified ? request.Config.Map : GameMap.Default,
-            MaxPlayers = 6,
-            CurrentPlayers = 0,
-            OwnerId = null,
             DeploymentId = deploymentId,
             Connection = new LobbyStorageConnectionData
             {
                 Ip = roomConnection.Host,
                 Port = roomConnection.Port
             },
-            State = RoomState.Open
+            State = RoomState.Open,
+            MaxPlayers = 6
         };
 
         var storageResponse = await LobbyStorage.CreateRoomAsync(roomData, context.CancellationToken).ConfigureAwait(false);
@@ -326,14 +320,7 @@ public partial class LobbyService
 
         _ = DiscordMatchNotifyService.NotifyRoomEntered(userName, roomData.GameVersion, roomData.RoomName, roomData.ShortId);
 
-        return new JoinRoomWithCodeResponse
-        {
-            Connection = new RoomConnectionInfo
-            {
-                Host = connection.Ip,
-                Port = connection.Port
-            }
-        };
+        return new JoinRoomWithCodeResponse { Connection = new RoomConnectionInfo { Host = connection.Ip, Port = connection.Port } };
     }
 
     [Authorize(Policy = StereoMixPolicy.AuthorizeUserOnlyPolicy)]
