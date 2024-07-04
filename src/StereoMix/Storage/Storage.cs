@@ -64,6 +64,14 @@ public abstract class Storage<T>(IFirestoreClient firestore, string collectionNa
         }, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+    protected async ValueTask<T?> FindAsync(Query query, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        var querySnapshot = await query.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
+        return querySnapshot.Count == 0 ? null : querySnapshot.FirstOrDefault()?.ConvertTo<T>();
+    }
+
     protected async ValueTask<T?> FindAsync(Query query, Func<DocumentSnapshot, bool> predicate, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);

@@ -27,8 +27,13 @@ public class LobbyStorage(IFirestoreClient firestore) : Storage<LobbyStorageData
     public ValueTask<LobbyStorageData?> FindRoomByShortIdAsync(string gameVersion, string shortRoomId, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(shortRoomId, nameof(shortRoomId));
-        var query = Collection.WhereEqualTo("short_id", shortRoomId);
-        return FindAsync(query, snapshot => snapshot.ConvertTo<LobbyStorageData>().State == RoomState.Open, cancellationToken);
+
+        var query = Collection
+            .WhereEqualTo("game_version", gameVersion)
+            .WhereEqualTo("short_id", shortRoomId)
+            .WhereEqualTo("state", "open");
+
+        return FindAsync(query, cancellationToken);
     }
 
     public ValueTask<IReadOnlyCollection<LobbyStorageData>> GetRoomsAsync(string gameVersion, GameMode mode, GameMap map, CancellationToken cancellationToken = default)
