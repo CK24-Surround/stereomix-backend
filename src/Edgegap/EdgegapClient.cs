@@ -17,8 +17,9 @@ public interface IEdgegapClient
 public class EdgegapClient : IEdgegapClient
 {
     private const string ApiKeyEnvironment = "EDGEGAP_API_KEY";
+
     private const string AppNameEnvironment = "EDGEGAP_APP_NAME";
-    private const string AppVersionEnvironment = "EDGEGAP_APP_VERSION";
+    // private const string AppVersionEnvironment = "EDGEGAP_APP_VERSION";
 
     private const string ApiUrl = "https://api.edgegap.com";
     private const string CreateDeploymentResource = "v1/deploy";
@@ -35,8 +36,8 @@ public class EdgegapClient : IEdgegapClient
         Config = new EdgegapConfig
         {
             ApiKey = configuration[ApiKeyEnvironment] ?? throw new InvalidOperationException($"{ApiKeyEnvironment} is not set"),
-            AppName = configuration[AppNameEnvironment] ?? throw new InvalidOperationException($"{AppNameEnvironment} is not set"),
-            AppVersion = configuration[AppVersionEnvironment] ?? throw new InvalidOperationException($"{AppVersionEnvironment} is not set")
+            AppName = configuration[AppNameEnvironment] ?? throw new InvalidOperationException($"{AppNameEnvironment} is not set")
+            // AppVersion = configuration[AppVersionEnvironment] ?? throw new InvalidOperationException($"{AppVersionEnvironment} is not set")
         };
 
         _httpClient = httpClient;
