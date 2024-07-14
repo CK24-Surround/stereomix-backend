@@ -6,14 +6,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Edgegap;
 
-public interface IEdgegapClient
-{
-    EdgegapConfig Config { get; }
-    Task<EdgegapCreateDeploymentResponse> CreateDeploymentAsync(EdgegapCreateDeploymentRequest request, CancellationToken cancellationToken = default);
-    Task<EdgegapGetDeploymentStatusResponse> GetDeploymentStatusAsync(string requestId, CancellationToken cancellationToken = default);
-    Task<EdgegapDeleteDeploymentResponse> DeleteDeploymentAsync(string requestId, CancellationToken cancellationToken = default);
-}
-
 public class EdgegapClient : IEdgegapClient
 {
     private const string ApiKeyEnvironment = "EDGEGAP_API_KEY";
@@ -37,7 +29,6 @@ public class EdgegapClient : IEdgegapClient
         {
             ApiKey = configuration[ApiKeyEnvironment] ?? throw new InvalidOperationException($"{ApiKeyEnvironment} is not set"),
             AppName = configuration[AppNameEnvironment] ?? throw new InvalidOperationException($"{AppNameEnvironment} is not set")
-            // AppVersion = configuration[AppVersionEnvironment] ?? throw new InvalidOperationException($"{AppVersionEnvironment} is not set")
         };
 
         _httpClient = httpClient;
