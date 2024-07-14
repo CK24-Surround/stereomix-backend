@@ -97,6 +97,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapGrpcHealthChecksService();
+app.MapGrpcService<GameService>();
 app.MapGrpcService<AuthService>();
 app.MapGrpcService<GreeterService>();
 app.MapGrpcService<LobbyService>();

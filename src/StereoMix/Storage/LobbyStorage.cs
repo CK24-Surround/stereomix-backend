@@ -67,13 +67,13 @@ public class LobbyStorage(IFirestoreClient firestore, ILogger<LobbyStorage> logg
         }
 
         var querySnapshot = await query.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
-        if (querySnapshot.Count == 0)
+        if (querySnapshot is null || querySnapshot.Count == 0)
         {
             return Array.Empty<LobbyStorageData>();
         }
 
         return querySnapshot.Documents
-            .Where(document => document.UpdateTime.Value.ToDateTime().AddHours(1) >= DateTime.UtcNow)
+            .Where(document => document.UpdateTime?.ToDateTime().AddHours(1) >= DateTime.UtcNow)
             .Select(document => document.ConvertTo<LobbyStorageData>()).ToArray();
     }
 

@@ -5,7 +5,8 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "PORT": "8080",
-        "FIRESTORE_EMULATOR_HOST": "127.0.0.1:7070"
+        "FIRESTORE_EMULATOR_HOST": "127.0.0.1:7070",
+        "STEREOMIX_SERVICE_VERSION": "0.3.2"
       },
       "dotnetRunMessages": true
     }

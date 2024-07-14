@@ -313,7 +313,7 @@ public partial class LobbyService
         }
 
         var connection = roomData.Connection;
-        if (connection is null)
+        if (connection is null || roomData.DeploymentId is null)
         {
             throw new RpcException(new Status(StatusCode.Internal, "Room connection data not found."));
         }
@@ -359,7 +359,7 @@ public partial class LobbyService
         LobbyStorageData? room = null;
         foreach (var activeRoom in activeRooms)
         {
-            if (activeRoom?.Connection is not null)
+            if (activeRoom is { Connection: not null, DeploymentId: not null })
             {
                 try
                 {
@@ -376,7 +376,7 @@ public partial class LobbyService
                 }
             }
 
-            await Task.Delay(1000);
+            await Task.Delay(1000).ConfigureAwait(false);
         }
 
         if (room is null)
@@ -388,8 +388,8 @@ public partial class LobbyService
         {
             Connection = new RoomConnectionInfo
             {
-                Host = room.Connection.Ip,
-                Port = room.Connection.Port
+                Host = room.Connection!.Ip,
+                Port = room.Connection!.Port
             }
         };
 

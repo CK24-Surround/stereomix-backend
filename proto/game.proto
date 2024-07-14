@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package game;
+
+option csharp_namespace = "StereoMix.Game";
+option cc_enable_arenas = true;
+
+service GameService {
+  rpc GetServiceVersion(GetServiceVersionRequest) returns (GetServiceVersionResponse);
+}
+
+message GetServiceVersionRequest {
+}
+
+message GetServiceVersionResponse {
+  string version = 1;
+}
