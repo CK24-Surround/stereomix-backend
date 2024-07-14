@@ -71,7 +71,7 @@ public class DiscordMatchNotify : IDisposable
             return;
         }
 
-        if (!string.IsNullOrWhiteSpace(_targetVersion) && gameVersion != _targetVersion)
+        if (gameVersion != _targetVersion)
         {
             _logger.LogInformation("Discord notification skipped. (NotifyRoomCreated) Target version: {TargetVersion}, Current version: {CurrentVersion}", _targetVersion, gameVersion);
             return;
@@ -97,7 +97,7 @@ public class DiscordMatchNotify : IDisposable
             return;
         }
 
-        if (!string.IsNullOrWhiteSpace(_targetVersion) && gameVersion != _targetVersion)
+        if (gameVersion != _targetVersion)
         {
             _logger.LogInformation("Discord notification skipped. (NotifyRoomCreated) Target version: {TargetVersion}, Current version: {CurrentVersion}", _targetVersion, gameVersion);
             return;
