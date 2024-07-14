@@ -20,7 +20,8 @@ public partial class LobbyService
         var user = httpContext.User;
         var userId = user.FindFirstValue(StereoMixClaimTypes.UserId) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User Id not found."));
         var userName = user.FindFirstValue(StereoMixClaimTypes.UserName) ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "User name not found."));
-        Logger.LogDebug("User {User}({UserId}) is request creating a room.", userName, userId);
+        Logger.LogInformation("User {User}({UserId}) is request creating a room.", userName, userId);
+        Logger.LogInformation("RoomConfig: RoomName={RoomName}, Visibility={Visibility}", request.Config.RoomName, request.Config.Visibility);
 
         if (string.IsNullOrWhiteSpace(request.RoomName))
         {
@@ -136,6 +137,7 @@ public partial class LobbyService
         {
             RoomId = roomId,
             GameVersion = deploymentStatus.AppVersion,
+            Visibility = request.Config.Visibility,
             ShortId = shortRoomId,
             RoomName = request.RoomName,
             DeploymentId = deploymentId,
@@ -316,6 +318,20 @@ public partial class LobbyService
             throw new RpcException(new Status(StatusCode.Internal, "Room connection data not found."));
         }
 
+        try
+        {
+            var deploymentStatus = await Edgegap.GetDeploymentStatusAsync(roomData.DeploymentId, context.CancellationToken).ConfigureAwait(false);
+            if (deploymentStatus.CurrentStatus is not EdgegapDeploymentStatusType.Ready)
+            {
+                throw new RpcException(new Status(StatusCode.Internal, "Deployment status is not ready."));
+            }
+        }
+        catch (EdgegapException e)
+        {
+            Logger.LogError(e, "{DeploymentId}: Failed to get deployment status.", roomData.DeploymentId);
+            throw new RpcException(new Status(StatusCode.Internal, "Failed to get deployment status."));
+        }
+
         Logger.LogInformation("User {UserName}({UserId}) joined room {RoomId}.", userName, userId, roomData.RoomId);
 
         _ = DiscordMatchNotifyService.NotifyRoomEntered(userName, roomData.GameVersion, roomData.RoomName, roomData.ShortId);
@@ -338,8 +354,32 @@ public partial class LobbyService
         }
 
         var activeRooms = await LobbyStorage.GetRoomsAsync(request.GameVersion, GameMode.Unspecified, GameMap.Unspecified, context.CancellationToken).ConfigureAwait(false);
-        var room = activeRooms.FirstOrDefault(r => r is { Visibility: RoomVisibility.Public, State: RoomState.Open } && r.CurrentPlayers < r.MaxPlayers);
-        if (room?.Connection is null)
+
+        // 오류로 인해 닫혔는데 DB에 state=open으로 남아있는 방을 걸러냄
+        LobbyStorageData? room = null;
+        foreach (var activeRoom in activeRooms)
+        {
+            if (activeRoom?.Connection is not null)
+            {
+                try
+                {
+                    var deploymentStatus = await Edgegap.GetDeploymentStatusAsync(activeRoom.DeploymentId, context.CancellationToken).ConfigureAwait(false);
+                    if (deploymentStatus.CurrentStatus is EdgegapDeploymentStatusType.Ready)
+                    {
+                        room = activeRoom;
+                        break;
+                    }
+                }
+                catch (EdgegapException e)
+                {
+                    Logger.LogError(e, "{DeploymentId}: Failed to get deployment status.", activeRoom.DeploymentId);
+                }
+            }
+
+            await Task.Delay(1000);
+        }
+
+        if (room is null)
         {
             throw new RpcException(new Status(StatusCode.NotFound, "Room not found."));
         }

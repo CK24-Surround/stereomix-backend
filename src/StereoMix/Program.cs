@@ -75,7 +75,17 @@ services.AddSingleton<IRoomEncryptor, RoomEncryptor>();
 services.AddSingleton<IUserStorage, UserStorage>();
 services.AddSingleton<ILobbyStorage, LobbyStorage>();
 services.AddSingleton<DiscordMatchNotify>();
-services.AddHttpClient<IEdgegapClient, EdgegapClient>().ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+
+// services.AddHttpClient<IEdgegapClient, EdgegapClient>().ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+if (configuration["ASPNETCORE_ENVIRONMENT"] == "Production")
+{
+    services.AddHttpClient<IEdgegapClient, EdgegapClient>().ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+}
+else
+{
+    services.AddSingleton<IEdgegapClient, EdgegapNullClient>();
+}
+
 var app = builder.Build();
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions

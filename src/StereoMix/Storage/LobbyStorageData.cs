@@ -29,6 +29,12 @@ public class LobbyStorageData
     [FirestoreProperty("current_players")] public int CurrentPlayers { get; set; }
     [FirestoreProperty("arbitrium_id")] public string? DeploymentId { get; set; }
     [FirestoreProperty("connection")] public LobbyStorageConnectionData? Connection { get; set; }
+
+
+    public override string ToString()
+    {
+        return $"RoomId: {RoomId}, GameVersion: {GameVersion}, ShortId: {ShortId}, RoomName: {RoomName}, PasswordEncrypted: {PasswordEncrypted}, OwnerId: {OwnerId}, State: {State}, Visibility: {Visibility}, Mode: {Mode}, Map: {Map}, MaxPlayers: {MaxPlayers}, CurrentPlayers: {CurrentPlayers}, DeploymentId: {DeploymentId}, Connection: {Connection}";
+    }
 }
 
 [FirestoreData]
