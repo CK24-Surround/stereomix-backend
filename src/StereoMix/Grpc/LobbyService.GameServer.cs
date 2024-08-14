@@ -1,6 +1,9 @@
 using Edgegap;
+
 using Grpc.Core;
+
 using Microsoft.AspNetCore.Authorization;
+
 using StereoMix.Lobby;
 using StereoMix.Storage;
 
@@ -81,7 +84,7 @@ public partial class LobbyService
 
         if (storageResponse == StorageResponse.NotFound)
         {
-            throw new RpcException(new Status(StatusCode.NotFound, "Room not found"));
+            Logger.LogWarning("Room {RoomId} not found. Just delete deployment.", requestRoomId);
         }
 
         if (deploymentId is null)
@@ -92,8 +95,8 @@ public partial class LobbyService
 
         try
         {
-            var deleteDeploymentRespons = await Edgegap.DeleteDeploymentAsync(deploymentId, context.CancellationToken).ConfigureAwait(false);
-            Logger.LogInformation("Deployment {DeploymentId} delete response: {Message}", deploymentId, deleteDeploymentRespons.Message);
+            var deleteDeploymentResponse = await Edgegap.DeleteDeploymentAsync(deploymentId, context.CancellationToken).ConfigureAwait(false);
+            Logger.LogInformation("Deployment {DeploymentId} delete response: {Message}", deploymentId, deleteDeploymentResponse.Message);
 
             return new DeleteRoomResponse();
         }
